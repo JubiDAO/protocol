@@ -33,6 +33,6 @@ export const mineToTimestamp = async (timestamp: number) => {
  * Mine forward the given number of seconds
  * @param seconds 
  */
-export const mineForwardSeconds = async (seconds: number) => {
+export const advance = async (seconds: number) => {
   await mineToTimestamp(await blockTimestamp() + seconds);
 }
