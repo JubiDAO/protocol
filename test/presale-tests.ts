@@ -2,7 +2,12 @@ import { BigNumber, Signer } from 'ethers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 
-import { FakeERC20, FakeERC20__factory, Presale, Presale__factory } from '../typechain';
+import {
+  FakeERC20,
+  FakeERC20__factory,
+  Presale,
+  Presale__factory,
+} from '../typechain';
 import { blockTimestamp, toAtto } from '../shared/utils';
 import { advance } from '../shared/localdev-heplers';
 
@@ -23,10 +28,13 @@ describe('Dogfood Presale Tests', function () {
   beforeEach(async function () {
     [owner, ash, jeeva, nonInvestor, daoMultisig] = await ethers.getSigners();
 
-    usdcToken = await new FakeERC20__factory(owner).deploy("Fake USDC", "USDC");
-    issuedToken = await new FakeERC20__factory(owner).deploy("Fake Issued Token", "TOKEN");
+    usdcToken = await new FakeERC20__factory(owner).deploy('Fake USDC', 'USDC');
+    issuedToken = await new FakeERC20__factory(owner).deploy(
+      'Fake Issued Token',
+      'TOKEN'
+    );
 
-    const now = await blockTimestamp()
+    const now = await blockTimestamp();
     presale = await new Presale__factory(owner).deploy(
       now + SECONDS_IN_ONE_WEEK,
       now + SECONDS_IN_ONE_WEEK,
@@ -37,7 +45,6 @@ describe('Dogfood Presale Tests', function () {
 
     await usdcToken.mint(await owner.getAddress(), toAtto(10000000000));
     await usdcToken.approve(presale.address, toAtto(10000000000));
-
   });
 
   describe('Deployment/Management', function () {
@@ -56,14 +63,17 @@ describe('Dogfood Presale Tests', function () {
     });
 
     it('should allow the setting the token issued', async function () {
-      expect(await presale.issuedToken()).to.equal(ethers.constants.AddressZero);
+      expect(await presale.issuedToken()).to.equal(
+        ethers.constants.AddressZero
+      );
       await presale.setIssuedToken(issuedToken.address);
       expect(await presale.issuedToken()).to.equal(issuedToken.address);
     });
 
     it('only the owner can set the issued token', async function () {
-      await expect(presale.connect(jeeva).setIssuedToken(issuedToken.address))
-        .to.revertedWith(ONLY_OWNER_ERROR);
+      await expect(
+        presale.connect(jeeva).setIssuedToken(issuedToken.address)
+      ).to.revertedWith(ONLY_OWNER_ERROR);
     });
   });
 
@@ -74,27 +84,34 @@ describe('Dogfood Presale Tests', function () {
         await presale.depositFor(await ash.getAddress(), toAtto(50));
       }).to.changeTokenBalance(usdcToken, daoMultisig, toAtto(150));
 
-      expect(await presale.allocation(await jeeva.getAddress())).eql(toAtto(100));
+      expect(await presale.allocation(await jeeva.getAddress())).eql(
+        toAtto(100)
+      );
       expect(await presale.allocation(await ash.getAddress())).eql(toAtto(50));
     });
 
     it('should block deposits, once round is closed', async function () {
       await advance(SECONDS_IN_ONE_WEEK);
-      await expect(presale.depositFor(await ash.getAddress(), toAtto(100)))
-        .to.revertedWith("Presale: round closed");
+      await expect(
+        presale.depositFor(await ash.getAddress(), toAtto(100))
+      ).to.revertedWith('Presale: round closed');
     });
 
     it('No tokens claimable until vesting starts', async function () {
       await presale.depositFor(await jeeva.getAddress(), toAtto(100));
       await presale.depositFor(await ash.getAddress(), toAtto(300));
 
-      expect(await presale.calculateClaimable(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
-      expect(await presale.calculateClaimable(await ash.getAddress())).eql([0,0].map(BigNumber.from));
+      expect(await presale.calculateClaimable(await jeeva.getAddress())).eql(
+        [0, 0].map(BigNumber.from)
+      );
+      expect(await presale.calculateClaimable(await ash.getAddress())).eql(
+        [0, 0].map(BigNumber.from)
+      );
     });
 
     it('Single Account claims fair share by end of vesting, if they make multiple claims', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      issuedToken.mint(presale.address, toAtto(10000))
+      await presale.setIssuedToken(issuedToken.address);
+      issuedToken.mint(presale.address, toAtto(10000));
 
       await presale.depositFor(await jeeva.getAddress(), toAtto(100));
       await presale.depositFor(await ash.getAddress(), toAtto(300));
@@ -104,12 +121,12 @@ describe('Dogfood Presale Tests', function () {
           await advance(SECONDS_IN_ONE_WEEK);
           await presale.claimFor(await jeeva.getAddress());
         }
-      }).to.changeTokenBalance(issuedToken, jeeva, toAtto(10000 / 4))
+      }).to.changeTokenBalance(issuedToken, jeeva, toAtto(10000 / 4));
     });
 
     it('Interleaved claims all result in the expected token amount', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      issuedToken.mint(presale.address, toAtto(10000))
+      await presale.setIssuedToken(issuedToken.address);
+      issuedToken.mint(presale.address, toAtto(10000));
 
       await presale.depositFor(await jeeva.getAddress(), toAtto(100));
       await presale.depositFor(await ash.getAddress(), toAtto(300));
@@ -120,14 +137,18 @@ describe('Dogfood Presale Tests', function () {
           await presale.claimFor(await jeeva.getAddress());
           await presale.claimFor(await ash.getAddress());
         }
-      }).to.changeTokenBalances(issuedToken, [jeeva,ash], [toAtto(10000 / 4), toAtto(10000 * 3 / 4)])
+      }).to.changeTokenBalances(
+        issuedToken,
+        [jeeva, ash],
+        [toAtto(10000 / 4), toAtto((10000 * 3) / 4)]
+      );
 
       expect(await issuedToken.balanceOf(presale.address)).eq(0);
     });
 
     it('Should allow entire allocation to be claimed on round completion', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      issuedToken.mint(presale.address, toAtto(10000))
+      await presale.setIssuedToken(issuedToken.address);
+      issuedToken.mint(presale.address, toAtto(10000));
 
       await presale.depositFor(await jeeva.getAddress(), toAtto(100));
       await presale.depositFor(await ash.getAddress(), toAtto(300));
@@ -136,7 +157,11 @@ describe('Dogfood Presale Tests', function () {
         await advance(SECONDS_IN_ONE_WEEK * 2 + SECONDS_IN_ONE_MONTH);
         await presale.claimFor(await jeeva.getAddress());
         await presale.claimFor(await ash.getAddress());
-      }).to.changeTokenBalances(issuedToken, [jeeva,ash], [toAtto(10000 / 4), toAtto(10000 * 3 / 4)])
+      }).to.changeTokenBalances(
+        issuedToken,
+        [jeeva, ash],
+        [toAtto(10000 / 4), toAtto((10000 * 3) / 4)]
+      );
 
       expect(await issuedToken.balanceOf(presale.address)).eq(0);
     });
