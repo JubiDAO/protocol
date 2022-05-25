@@ -25,6 +25,7 @@
     "hardhat": "^2.8.3",
     "keccak256": "^1.0.6",
     "merkletreejs": "^0.2.31",
+    "short-unique-id": "^4.4.4",
     "ts-generator": "^0.1.1",
     "ts-node": "^10.0.0",
     "typechain": "^7.0.0",
@@ -38,8 +39,7 @@
     "local-deploy": "hardhat run --network localhost scripts/deploys/local.ts",
     "hardhat:local": "hardhat --network localhost",
     "hardhat:testnet": "hardhat --network rinkeby",
-    "hardhat:mainnet": "hardhat --network mainnet",
-    "hardhat:avalanche": "hardhat --network matic"
+    "hardhat:mainnet": "hardhat --network mainnet"
   },
   "engines": {
     "node": "14.x"
