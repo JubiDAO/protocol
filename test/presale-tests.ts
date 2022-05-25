@@ -24,12 +24,12 @@ describe('Dogfood Presale Tests', function () {
   let inviteCodes: string[];
   let inviteMerkleTree: MerkleTree
 
-  const hashedInvite = (code: string): [string, string[]] => {
+  const hashedInvite = (code: string): [Buffer, string[]] => {
     const hashedCode = keccak256(code);
-    return [hashedCode, inviteMerkleTree.getHexProof(hashedCode)];
+    return [Buffer.from(code, "utf8"), inviteMerkleTree.getHexProof(hashedCode)];
   }
 
-  const nextInvite = (): [string, string[]] => {
+  const nextInvite = (): [Buffer, string[]] => {
     const code = inviteCodes.pop();
     if (code === undefined) {
       throw new Error("All invite codes used");
