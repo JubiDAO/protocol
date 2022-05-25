@@ -10,8 +10,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * Designed to capture the expected investor user flow (including vesting).
  */
 contract Presale is Ownable {
-    /// @dev when the round ends
-    uint256 public immutable roundEndTimestamp;
+    /// @dev Is the round open
+    bool public isOpen = true;
 
     /// @dev when the vesting starts
     uint256 public immutable vestingStartTimestamp;
@@ -39,26 +39,20 @@ contract Presale is Ownable {
     event Claimed(address account, uint256 amount);
 
     constructor(
-        uint256 _roundEndTimestamp,
         uint256 _vestingStartTimestamp,
         uint256 _vestingDuration,
         IERC20 _raiseToken,
         address _daoMultisig
     ) {
-        roundEndTimestamp = _roundEndTimestamp;
         vestingStartTimestamp = _vestingStartTimestamp;
         vestingDuration = _vestingDuration;
         raiseToken = _raiseToken;
         daoMultisig = _daoMultisig;
     }
 
-    function setIssuedToken(IERC20 _issuedToken) external onlyOwner {
-        issuedToken = _issuedToken;
-    }
-
     function depositFor(address account, uint256 amount) external {
         require(account != address(0), "Presale: Address cannot be 0x0");
-        require(block.timestamp < roundEndTimestamp, "Presale: round closed");
+        require(isOpen, "Presale: round closed");
 
         allocation[account] += amount;
         totalAllocated += amount;
@@ -93,5 +87,16 @@ contract Presale is Ownable {
         
         SafeERC20.safeTransfer(issuedToken, account, claimable);
         emit Claimed(msg.sender, claimable);
+    }
+
+    /// @dev owner only. set issued token, needs to be created before
+    /// vest start date
+    function setIssuedToken(IERC20 _issuedToken) external onlyOwner {
+        issuedToken = _issuedToken;
+    }
+
+    /// @dev owner only. Close round
+    function closeRound() external onlyOwner {
+        isOpen = false;
     }
 }
