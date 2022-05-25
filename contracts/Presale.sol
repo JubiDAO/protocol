@@ -57,7 +57,8 @@ contract Presale is Ownable {
 
     function depositFor(address account, uint256 amount) external {
         require(account != address(0), "Presale: Address cannot be 0x0");
-        require(isOpen, "Presale: round closed");
+        require(isOpen, "Presale: Round closed");
+        require(hardCap > totalAllocated, "Presale: Round closed, hard cap reached");
 
         uint256 remainingAllocation = hardCap - totalAllocated;
         if (remainingAllocation < amount) {
