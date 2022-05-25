@@ -72,7 +72,7 @@ contract Presale is Ownable {
         require(account != address(0), "Presale: Address cannot be 0x0");
         require(block.timestamp < roundEndTimestamp, "Presale: round closed");
         require(!claimedInvites[hashedInviteCode], "Presale: Invite code has been used");
-        require(MerkleProof.verify(merkleProof, inviteCodesMerkleRoot, hashedInviteCode), "Presale: invalid invite code");
+        require(MerkleProof.verify(merkleProof, inviteCodesMerkleRoot, hashedInviteCode), "Presale: Invalid invite code");
 
         allocation[account] += amount;
         totalAllocated += amount;

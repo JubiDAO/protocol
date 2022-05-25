@@ -24,14 +24,18 @@ describe('Dogfood Presale Tests', function () {
   let inviteCodes: string[];
   let inviteMerkleTree: MerkleTree
 
+  const hashedInvite = (code: string): [string, string[]] => {
+    const hashedCode = keccak256(code);
+    return [hashedCode, inviteMerkleTree.getHexProof(hashedCode)];
+  }
+
   const nextInvite = (): [string, string[]] => {
     const code = inviteCodes.pop();
     if (code === undefined) {
       throw new Error("All invite codes used");
     }
 
-    const hashedCode = keccak256(code);
-    return [hashedCode, inviteMerkleTree.getHexProof(hashedCode)];
+    return hashedInvite(code);
   }
 
   beforeEach(async function () {
@@ -157,6 +161,51 @@ describe('Dogfood Presale Tests', function () {
       }).to.changeTokenBalances(issuedToken, [jeeva,ash], [toAtto(10000 / 4), toAtto(10000 * 3 / 4)])
 
       expect(await issuedToken.balanceOf(presale.address)).eq(0);
+    });
+
+    it('Should allow entire allocation to be claimed on round completion', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      issuedToken.mint(presale.address, toAtto(10000))
+
+      await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
+
+      await expect(async () => {
+        await advance(SECONDS_IN_ONE_WEEK * 2 + SECONDS_IN_ONE_MONTH);
+        await presale.claimFor(await jeeva.getAddress());
+        await presale.claimFor(await ash.getAddress());
+      }).to.changeTokenBalances(issuedToken, [jeeva,ash], [toAtto(10000 / 4), toAtto(10000 * 3 / 4)])
+
+      expect(await issuedToken.balanceOf(presale.address)).eq(0);
+    });
+
+    it('Invite code can only be used once', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      issuedToken.mint(presale.address, toAtto(10000))
+
+      const [hashedCode, merkleProof] = nextInvite();
+      await presale.depositFor(await jeeva.getAddress(), toAtto(100), hashedCode, merkleProof);
+      await expect(presale.depositFor(await jeeva.getAddress(), toAtto(300), hashedCode, merkleProof))
+        .to.revertedWith("Presale: Invite code has been used")
+    });
+
+    it('Invalid invite codes are not accepted', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      issuedToken.mint(presale.address, toAtto(10000))
+
+      const [hashedCode, merkleProof] = hashedInvite("invalid123");
+      await expect(presale.depositFor(await ash.getAddress(), toAtto(300), hashedCode, merkleProof))
+        .to.revertedWith("Presale: Invalid invite code")
+    });
+
+    it('Mismatched invite hash and merkle proof should fail', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      issuedToken.mint(presale.address, toAtto(10000))
+
+      const [hashedCode, _1] = nextInvite()
+      const [_2, merkleProof] = nextInvite()
+      await expect(presale.depositFor(await ash.getAddress(), toAtto(300), hashedCode, merkleProof))
+        .to.revertedWith("Presale: Invalid invite code")
     });
   });
 });
