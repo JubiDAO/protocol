@@ -13,6 +13,9 @@ contract Presale is Ownable {
     /// @dev Is the round open
     bool public isOpen = true;
 
+    /// @dev Hard cap on round
+    uint256 public immutable hardCap;
+
     /// @dev when the vesting starts
     uint256 public immutable vestingStartTimestamp;
 
@@ -39,11 +42,13 @@ contract Presale is Ownable {
     event Claimed(address account, uint256 amount);
 
     constructor(
+        uint256 _hardCap,
         uint256 _vestingStartTimestamp,
         uint256 _vestingDuration,
         IERC20 _raiseToken,
         address _daoMultisig
     ) {
+        hardCap = _hardCap;
         vestingStartTimestamp = _vestingStartTimestamp;
         vestingDuration = _vestingDuration;
         raiseToken = _raiseToken;
@@ -54,10 +59,16 @@ contract Presale is Ownable {
         require(account != address(0), "Presale: Address cannot be 0x0");
         require(isOpen, "Presale: round closed");
 
+        uint256 remainingAllocation = hardCap - totalAllocated;
+        if (remainingAllocation < amount) {
+            amount = remainingAllocation;
+        }
+
         allocation[account] += amount;
         totalAllocated += amount;
 
         SafeERC20.safeTransferFrom(raiseToken, msg.sender, daoMultisig, amount);
+        emit Deposited(account, amount);
     }
 
     function calculateClaimable(address account) public view returns (uint256 share, uint256 amount)
@@ -86,7 +97,7 @@ contract Presale is Ownable {
         totalClaimed += share;
         
         SafeERC20.safeTransfer(issuedToken, account, claimable);
-        emit Claimed(msg.sender, claimable);
+        emit Claimed(account, claimable);
     }
 
     /// @dev owner only. set issued token, needs to be created before
