@@ -92,7 +92,7 @@ describe('Dogfood Presale Tests', function () {
     it('should block deposits, once round hard cap is reached', async function () {
       await presale.depositFor(await jeeva.getAddress(), toAtto(1000));
       await expect(presale.depositFor(await ash.getAddress(), toAtto(100)))
-        .to.revertedWith("Presale: Round closed, hard cap reached");
+        .to.revertedWith("Presale: Round closed, goal reached");
     });
 
     it('should scale last deposit, as to not exceed round close', async function () {
