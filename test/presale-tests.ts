@@ -28,7 +28,7 @@ describe('Dogfood Presale Tests', function () {
 
     const now = await blockTimestamp()
     presale = await new Presale__factory(owner).deploy(
-      now + SECONDS_IN_ONE_WEEK,
+      toAtto(1000),
       now + SECONDS_IN_ONE_WEEK,
       SECONDS_IN_ONE_MONTH,
       usdcToken.address,
@@ -79,7 +79,7 @@ describe('Dogfood Presale Tests', function () {
     });
 
     it('should block deposits, once round is closed', async function () {
-      await advance(SECONDS_IN_ONE_WEEK);
+      await presale.closeRound();
       await expect(presale.depositFor(await ash.getAddress(), toAtto(100)))
         .to.revertedWith("Presale: round closed");
     });
