@@ -20,6 +20,10 @@ async function main() {
   console.log();
   console.log('*** INVITE CODES + keccak256 hash (tab seperated, copy/pastable into sheets)***');
   inviteCodes.forEach(c => console.log(`${c}\t${keccak256(c).toString('hex')}`));
+  console.log();
+  console.log();
+  console.log('*** Hashed Leaves (to be embedded into the dApp ***');
+  console.log(JSON.stringify(inviteCodes.map(c => keccak256(c).toString('hex'))));
 }
 
 // We recommend this pattern to be able to use async/await everywhere
