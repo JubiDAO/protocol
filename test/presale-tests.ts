@@ -1,10 +1,12 @@
 import { BigNumber, Signer } from 'ethers';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
+import { MerkleTree } from 'merkletreejs';
 
 import { FakeERC20, FakeERC20__factory, Presale, Presale__factory } from '../typechain';
 import { blockTimestamp, toAtto } from '../shared/utils';
 import { advance } from '../shared/localdev-heplers';
+import keccak256 from 'keccak256';
 
 const SECONDS_IN_ONE_WEEK = 604800;
 const SECONDS_IN_ONE_MONTH = 2628000;
@@ -19,6 +21,22 @@ describe('Dogfood Presale Tests', function () {
   let daoMultisig: Signer;
   let usdcToken: FakeERC20;
   let issuedToken: FakeERC20;
+  let inviteCodes: string[];
+  let inviteMerkleTree: MerkleTree
+
+  const hashedInvite = (code: string): [Buffer, string[]] => {
+    const hashedCode = keccak256(code);
+    return [Buffer.from(code, "utf8"), inviteMerkleTree.getHexProof(hashedCode)];
+  }
+
+  const nextInvite = (): [Buffer, string[]] => {
+    const code = inviteCodes.pop();
+    if (code === undefined) {
+      throw new Error("All invite codes used");
+    }
+
+    return hashedInvite(code);
+  }
 
   beforeEach(async function () {
     [owner, ash, jeeva, nonInvestor, daoMultisig] = await ethers.getSigners();
@@ -26,8 +44,12 @@ describe('Dogfood Presale Tests', function () {
     usdcToken = await new FakeERC20__factory(owner).deploy("Fake USDC", "USDC");
     issuedToken = await new FakeERC20__factory(owner).deploy("Fake Issued Token", "TOKEN");
 
+    inviteCodes = ["asdf12", "123asdf", "SLKJ3n1", "098123AS", "09lkmqwe", "S3JOInsa"];
+    inviteMerkleTree = new MerkleTree(inviteCodes.map(c => keccak256(c)), keccak256, {sortPairs: true});
+
     const now = await blockTimestamp()
     presale = await new Presale__factory(owner).deploy(
+      inviteMerkleTree.getRoot(),
       now + SECONDS_IN_ONE_WEEK,
       now + SECONDS_IN_ONE_WEEK,
       SECONDS_IN_ONE_MONTH,
@@ -70,8 +92,8 @@ describe('Dogfood Presale Tests', function () {
   describe('Transactions', function () {
     it('should allow users to deposit, while round is open', async function () {
       await expect(async () => {
-        await presale.depositFor(await jeeva.getAddress(), toAtto(100));
-        await presale.depositFor(await ash.getAddress(), toAtto(50));
+        await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
+        await presale.depositFor(await ash.getAddress(), toAtto(50), ...nextInvite());
       }).to.changeTokenBalance(usdcToken, daoMultisig, toAtto(150));
 
       expect(await presale.allocation(await jeeva.getAddress())).eql(toAtto(100));
@@ -80,13 +102,13 @@ describe('Dogfood Presale Tests', function () {
 
     it('should block deposits, once round is closed', async function () {
       await advance(SECONDS_IN_ONE_WEEK);
-      await expect(presale.depositFor(await ash.getAddress(), toAtto(100)))
+      await expect(presale.depositFor(await ash.getAddress(), toAtto(100), ...nextInvite()))
         .to.revertedWith("Presale: round closed");
     });
 
     it('No tokens claimable until vesting starts', async function () {
-      await presale.depositFor(await jeeva.getAddress(), toAtto(100));
-      await presale.depositFor(await ash.getAddress(), toAtto(300));
+      await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
 
       expect(await presale.calculateClaimable(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
       expect(await presale.calculateClaimable(await ash.getAddress())).eql([0,0].map(BigNumber.from));
@@ -96,8 +118,8 @@ describe('Dogfood Presale Tests', function () {
       await presale.setIssuedToken(issuedToken.address)
       issuedToken.mint(presale.address, toAtto(10000))
 
-      await presale.depositFor(await jeeva.getAddress(), toAtto(100));
-      await presale.depositFor(await ash.getAddress(), toAtto(300));
+      await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
 
       await expect(async () => {
         for (let i = 0; i < 10; i++) {
@@ -111,8 +133,8 @@ describe('Dogfood Presale Tests', function () {
       await presale.setIssuedToken(issuedToken.address)
       issuedToken.mint(presale.address, toAtto(10000))
 
-      await presale.depositFor(await jeeva.getAddress(), toAtto(100));
-      await presale.depositFor(await ash.getAddress(), toAtto(300));
+      await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
 
       await expect(async () => {
         for (let i = 0; i < 10; i++) {
@@ -129,8 +151,8 @@ describe('Dogfood Presale Tests', function () {
       await presale.setIssuedToken(issuedToken.address)
       issuedToken.mint(presale.address, toAtto(10000))
 
-      await presale.depositFor(await jeeva.getAddress(), toAtto(100));
-      await presale.depositFor(await ash.getAddress(), toAtto(300));
+      await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
 
       await expect(async () => {
         await advance(SECONDS_IN_ONE_WEEK * 2 + SECONDS_IN_ONE_MONTH);
@@ -139,6 +161,51 @@ describe('Dogfood Presale Tests', function () {
       }).to.changeTokenBalances(issuedToken, [jeeva,ash], [toAtto(10000 / 4), toAtto(10000 * 3 / 4)])
 
       expect(await issuedToken.balanceOf(presale.address)).eq(0);
+    });
+
+    it('Should allow entire allocation to be claimed on round completion', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      issuedToken.mint(presale.address, toAtto(10000))
+
+      await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
+
+      await expect(async () => {
+        await advance(SECONDS_IN_ONE_WEEK * 2 + SECONDS_IN_ONE_MONTH);
+        await presale.claimFor(await jeeva.getAddress());
+        await presale.claimFor(await ash.getAddress());
+      }).to.changeTokenBalances(issuedToken, [jeeva,ash], [toAtto(10000 / 4), toAtto(10000 * 3 / 4)])
+
+      expect(await issuedToken.balanceOf(presale.address)).eq(0);
+    });
+
+    it('Invite code can only be used once', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      issuedToken.mint(presale.address, toAtto(10000))
+
+      const [hashedCode, merkleProof] = nextInvite();
+      await presale.depositFor(await jeeva.getAddress(), toAtto(100), hashedCode, merkleProof);
+      await expect(presale.depositFor(await jeeva.getAddress(), toAtto(300), hashedCode, merkleProof))
+        .to.revertedWith("Presale: Invite code has been used")
+    });
+
+    it('Invalid invite codes are not accepted', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      issuedToken.mint(presale.address, toAtto(10000))
+
+      const [hashedCode, merkleProof] = hashedInvite("invalid123");
+      await expect(presale.depositFor(await ash.getAddress(), toAtto(300), hashedCode, merkleProof))
+        .to.revertedWith("Presale: Invalid invite code")
+    });
+
+    it('Mismatched invite hash and merkle proof should fail', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      issuedToken.mint(presale.address, toAtto(10000))
+
+      const [hashedCode, _1] = nextInvite()
+      const [_2, merkleProof] = nextInvite()
+      await expect(presale.depositFor(await ash.getAddress(), toAtto(300), hashedCode, merkleProof))
+        .to.revertedWith("Presale: Invalid invite code")
     });
   });
 });

@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 /**
  * @dev Little 'm' mVP Presale contract
@@ -25,6 +26,15 @@ contract Presale is Ownable {
     /// @dev Where do funds raised get sent
     address public immutable daoMultisig;
 
+    /// @dev merkle root that captures all valid invite codes
+    bytes32 public immutable inviteCodesMerkleRoot;
+
+    /// @dev Where do funds raised get sent
+    /// TODO: discuss/decide if this should be a packed array bitMap for 
+    ///       gas efficiency (may not matter if most presales have < 100 or
+    ///       so participants). Needs some tests
+    mapping(bytes => bool) public claimedInvites;
+
     /// @dev what token are we issueing as per vesting conditions
     /// not immutable as we expect to set this once we complete the presale
     IERC20 public issuedToken;
@@ -39,12 +49,14 @@ contract Presale is Ownable {
     event Claimed(address account, uint256 amount);
 
     constructor(
+        bytes32 _inviteCodesMerkleRoot,
         uint256 _roundEndTimestamp,
         uint256 _vestingStartTimestamp,
         uint256 _vestingDuration,
         IERC20 _raiseToken,
         address _daoMultisig
     ) {
+        inviteCodesMerkleRoot = _inviteCodesMerkleRoot;
         roundEndTimestamp = _roundEndTimestamp;
         vestingStartTimestamp = _vestingStartTimestamp;
         vestingDuration = _vestingDuration;
@@ -56,12 +68,15 @@ contract Presale is Ownable {
         issuedToken = _issuedToken;
     }
 
-    function depositFor(address account, uint256 amount) external {
+    function depositFor(address account, uint256 amount, bytes memory inviteCode, bytes32[] calldata merkleProof) external {
         require(account != address(0), "Presale: Address cannot be 0x0");
         require(block.timestamp < roundEndTimestamp, "Presale: round closed");
+        require(!claimedInvites[inviteCode], "Presale: Invite code has been used");
+        require(MerkleProof.verify(merkleProof, inviteCodesMerkleRoot, keccak256(inviteCode)), "Presale: Invalid invite code");
 
         allocation[account] += amount;
         totalAllocated += amount;
+        claimedInvites[inviteCode] = true;
 
         SafeERC20.safeTransferFrom(raiseToken, msg.sender, daoMultisig, amount);
     }
