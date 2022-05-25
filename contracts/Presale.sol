@@ -11,8 +11,11 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
  * Designed to capture the expected investor user flow (including vesting).
  */
 contract Presale is Ownable {
-    /// @dev when the round ends
-    uint256 public immutable roundEndTimestamp;
+    /// @dev Is the round open
+    bool public isOpen = true;
+
+    /// @dev Hard cap on round
+    uint256 public immutable hardCap;
 
     /// @dev when the vesting starts
     uint256 public immutable vestingStartTimestamp;
@@ -49,36 +52,39 @@ contract Presale is Ownable {
     event Claimed(address account, uint256 amount);
 
     constructor(
+        uint256 _hardCap,
         bytes32 _inviteCodesMerkleRoot,
-        uint256 _roundEndTimestamp,
         uint256 _vestingStartTimestamp,
         uint256 _vestingDuration,
         IERC20 _raiseToken,
         address _daoMultisig
     ) {
+        hardCap = _hardCap;
         inviteCodesMerkleRoot = _inviteCodesMerkleRoot;
-        roundEndTimestamp = _roundEndTimestamp;
         vestingStartTimestamp = _vestingStartTimestamp;
         vestingDuration = _vestingDuration;
         raiseToken = _raiseToken;
         daoMultisig = _daoMultisig;
     }
 
-    function setIssuedToken(IERC20 _issuedToken) external onlyOwner {
-        issuedToken = _issuedToken;
-    }
-
     function depositFor(address account, uint256 amount, bytes memory inviteCode, bytes32[] calldata merkleProof) external {
         require(account != address(0), "Presale: Address cannot be 0x0");
-        require(block.timestamp < roundEndTimestamp, "Presale: round closed");
+        require(isOpen, "Presale: Round closed");
+        require(hardCap > totalAllocated, "Presale: Round closed, goal reached");
         require(!claimedInvites[inviteCode], "Presale: Invite code has been used");
         require(MerkleProof.verify(merkleProof, inviteCodesMerkleRoot, keccak256(inviteCode)), "Presale: Invalid invite code");
+
+        uint256 remainingAllocation = hardCap - totalAllocated;
+        if (remainingAllocation < amount) {
+            amount = remainingAllocation;
+        }
 
         allocation[account] += amount;
         totalAllocated += amount;
         claimedInvites[inviteCode] = true;
 
         SafeERC20.safeTransferFrom(raiseToken, msg.sender, daoMultisig, amount);
+        emit Deposited(account, amount);
     }
 
     function calculateClaimable(address account) public view returns (uint256 share, uint256 amount)
@@ -107,6 +113,17 @@ contract Presale is Ownable {
         totalClaimed += share;
         
         SafeERC20.safeTransfer(issuedToken, account, claimable);
-        emit Claimed(msg.sender, claimable);
+        emit Claimed(account, claimable);
+    }
+
+    /// @dev owner only. set issued token, needs to be created before
+    /// vest start date
+    function setIssuedToken(IERC20 _issuedToken) external onlyOwner {
+        issuedToken = _issuedToken;
+    }
+
+    /// @dev owner only. Close round
+    function closeRound() external onlyOwner {
+        isOpen = false;
     }
 }

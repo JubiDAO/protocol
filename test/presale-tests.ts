@@ -49,8 +49,8 @@ describe('Dogfood Presale Tests', function () {
 
     const now = await blockTimestamp()
     presale = await new Presale__factory(owner).deploy(
+      toAtto(1000),
       inviteMerkleTree.getRoot(),
-      now + SECONDS_IN_ONE_WEEK,
       now + SECONDS_IN_ONE_WEEK,
       SECONDS_IN_ONE_MONTH,
       usdcToken.address,
@@ -87,6 +87,11 @@ describe('Dogfood Presale Tests', function () {
       await expect(presale.connect(jeeva).setIssuedToken(issuedToken.address))
         .to.revertedWith(ONLY_OWNER_ERROR);
     });
+
+    it('only the owner can manually close the round', async function () {
+      await expect(presale.connect(jeeva).closeRound())
+        .to.revertedWith(ONLY_OWNER_ERROR);
+    });
   });
 
   describe('Transactions', function () {
@@ -101,9 +106,21 @@ describe('Dogfood Presale Tests', function () {
     });
 
     it('should block deposits, once round is closed', async function () {
-      await advance(SECONDS_IN_ONE_WEEK);
+      await presale.closeRound();
       await expect(presale.depositFor(await ash.getAddress(), toAtto(100), ...nextInvite()))
-        .to.revertedWith("Presale: round closed");
+        .to.revertedWith("Presale: Round closed");
+    });
+
+    it('should block deposits, once round hard cap is reached', async function () {
+      await presale.depositFor(await jeeva.getAddress(), toAtto(1000), ...nextInvite());
+      await expect(presale.depositFor(await ash.getAddress(), toAtto(100), ...nextInvite()))
+        .to.revertedWith("Presale: Round closed, goal reached");
+    });
+
+    it('should scale last deposit, as to not exceed round close', async function () {
+      await presale.depositFor(await jeeva.getAddress(), toAtto(990), ...nextInvite());
+      await expect(async () => presale.depositFor(await ash.getAddress(), toAtto(100), ...nextInvite()))
+        .to.changeTokenBalance(usdcToken, daoMultisig, toAtto(10))
     });
 
     it('No tokens claimable until vesting starts', async function () {
