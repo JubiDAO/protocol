@@ -65,6 +65,10 @@ async function main() {
   console.log();
   console.log('*** INVITE CODES ***');
   inviteCodes.forEach(c => console.log(c));
+
+  console.log('*** Hashed Leaves (to be embedded into the dApp ***');
+  console.log(JSON.stringify(inviteCodes.map(c => keccak256(c).toString('hex'))));
+
 }
 
 // We recommend this pattern to be able to use async/await everywhere
