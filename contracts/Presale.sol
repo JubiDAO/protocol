@@ -68,15 +68,15 @@ contract Presale is Ownable {
         issuedToken = _issuedToken;
     }
 
-    function depositFor(address account, uint256 amount, bytes32 inviteCode, bytes32 inviteCodeKeccak256, bytes32[] calldata merkleProof) external {
+    function depositFor(address account, uint256 amount, bytes32 hashedInviteCode, bytes32[] calldata merkleProof) external {
         require(account != address(0), "Presale: Address cannot be 0x0");
         require(block.timestamp < roundEndTimestamp, "Presale: round closed");
-        require(!claimedInvites[inviteCode], "Presale: Invite code has been used");
-        require(MerkleProof.verify(merkleProof, inviteCodesMerkleRoot, inviteCodeKeccak256), "Presale: invalid invite code");
+        require(!claimedInvites[hashedInviteCode], "Presale: Invite code has been used");
+        require(MerkleProof.verify(merkleProof, inviteCodesMerkleRoot, hashedInviteCode), "Presale: invalid invite code");
 
         allocation[account] += amount;
         totalAllocated += amount;
-        claimedInvites[inviteCode] = true;
+        claimedInvites[hashedInviteCode] = true;
 
         SafeERC20.safeTransferFrom(raiseToken, msg.sender, daoMultisig, amount);
     }
