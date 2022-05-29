@@ -16,10 +16,12 @@ import { BigNumber } from 'ethers';
 async function main() {
   const deployedContracts = DEPLOYED_CONTRACTS[network.name];
   const args: {
+    HARD_CAP: string;
     HASHED_INVITE_CODES_JSON: string; // filename containing a json array of  keccak256 hashed invite codes
     VESTING_CLIFF_DURATION: string;   // Vesting cliff for presale participants post token launch
     VESTING_DURATION: string;         // How long do presale participants vest (post cliff)
   } = {
+    HARD_CAP: '',
     HASHED_INVITE_CODES_JSON: '',
     VESTING_CLIFF_DURATION: '',
     VESTING_DURATION: '',
@@ -33,7 +35,7 @@ async function main() {
 
   const presaleFactory = new Presale__factory(owner)
   const presale: Presale = await deployAndMine("PRESALE", presaleFactory, presaleFactory.deploy,
-    toAtto(5000000), // 5 MIL
+    toAtto(parseInt(args.HARD_CAP)),
     inviteMerkleTree.getRoot(),
     BigNumber.from(args.VESTING_CLIFF_DURATION),
     BigNumber.from(args.VESTING_DURATION),

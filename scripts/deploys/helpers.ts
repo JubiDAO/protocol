@@ -23,7 +23,19 @@ export async function deployAndMine<T extends BaseContract, D extends (...args: 
     throw new Error("Contract factory and deploy method don't match");
   }
 
-  console.log(`*******Deploying ${name} on ${network.name} with args ${JSON.stringify(args, null, 2)}`);
+  const verifyRenderedArgs: any[] = [];
+  for (const arg of args) {
+    if (arg instanceof Buffer) {
+      verifyRenderedArgs.push(`0x${arg.toString('hex')}`)
+    } else if (arg instanceof BigNumber) {
+      verifyRenderedArgs.push(arg.toString())
+    } else {
+      // XXX(jeeva): As we deploy smart contracts, we'll realise which types we need to fix here
+      verifyRenderedArgs.push(arg);
+    }
+  }
+
+  console.log(`*******Deploying ${name} on ${network.name} with args ${JSON.stringify(verifyRenderedArgs, null, 2)}`);
   const contract = await factory.deploy(...args) as T;
   console.log(`Deployed... waiting for transaction to mine`);
   console.log();
@@ -35,9 +47,9 @@ export async function deployAndMine<T extends BaseContract, D extends (...args: 
   if (!fs.existsSync(deployArgsDir)) {
     fs.mkdirSync(deployArgsDir);
   }
-  fs.writeFileSync(`${deployArgsDir}/${contract.address}`, `module.exports = ${JSON.stringify(args, null, 2)}`)
+  fs.writeFileSync(`${deployArgsDir}/${contract.address}.js`, `module.exports = ${JSON.stringify(verifyRenderedArgs, null, 2)}`)
 
-  console.log(`hardhat verify args written to ${deployArgsDir}/${contract.address}`);
+  console.log(`hardhat verify args written to ${deployArgsDir}/${contract.address}.js`);
   console.log('********************\n');
 
   return contract;
