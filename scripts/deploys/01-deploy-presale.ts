@@ -35,7 +35,7 @@ async function main() {
 
   const presaleFactory = new Presale__factory(owner)
   const presale: Presale = await deployAndMine("PRESALE", presaleFactory, presaleFactory.deploy,
-    toAtto(parseInt(args.HARD_CAP)),
+    BigNumber.from(args.HARD_CAP),
     inviteMerkleTree.getRoot(),
     BigNumber.from(args.VESTING_CLIFF_DURATION),
     BigNumber.from(args.VESTING_DURATION),
