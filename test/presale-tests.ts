@@ -180,22 +180,6 @@ describe('Dogfood Presale Tests', function () {
       expect(await issuedToken.balanceOf(presale.address)).eq(0);
     });
 
-    it('Should allow entire allocation to be claimed on round completion', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      issuedToken.mint(presale.address, toAtto(10000))
-
-      await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
-      await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
-
-      await expect(async () => {
-        await advance(SECONDS_IN_ONE_WEEK * 2 + SECONDS_IN_ONE_MONTH);
-        await presale.claimFor(await jeeva.getAddress());
-        await presale.claimFor(await ash.getAddress());
-      }).to.changeTokenBalances(issuedToken, [jeeva,ash], [toAtto(10000 / 4), toAtto(10000 * 3 / 4)])
-
-      expect(await issuedToken.balanceOf(presale.address)).eq(0);
-    });
-
     it('Invite code can only be used once', async function () {
       await presale.setIssuedToken(issuedToken.address)
       issuedToken.mint(presale.address, toAtto(10000))
