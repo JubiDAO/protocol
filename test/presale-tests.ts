@@ -130,10 +130,23 @@ describe('Dogfood Presale Tests', function () {
       expect(await presale.calculateClaimable(await ash.getAddress())).eql([0,0].map(BigNumber.from));
     });
 
-    it('No tokens claimable durinv vesting cliff', async function () {
+    it('No tokens claimable during vesting cliff', async function () {
       await presale.setIssuedToken(issuedToken.address)
       await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
       await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
+
+      expect(await presale.calculateClaimable(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
+      expect(await presale.calculateClaimable(await ash.getAddress())).eql([0,0].map(BigNumber.from));
+
+      await advance(SECONDS_IN_ONE_WEEK / 2);
+      expect(await presale.calculateClaimable(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
+      expect(await presale.calculateClaimable(await ash.getAddress())).eql([0,0].map(BigNumber.from));
+    });
+
+    it('Can only set issued token once', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      await expect(presale.setIssuedToken(issuedToken.address))
+        .to.revertedWith("Presale: Issued token already sent");
 
       expect(await presale.calculateClaimable(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
       expect(await presale.calculateClaimable(await ash.getAddress())).eql([0,0].map(BigNumber.from));
