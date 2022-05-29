@@ -33,24 +33,24 @@ async function main() {
   const inviteMerkleTree = new MerkleTree(inviteCodes.map(c => keccak256(c)), keccak256, {sortPairs: true});
 
   const presale = await new Presale__factory(owner).deploy(
+    toAtto(5000000), // 5 MIL
     inviteMerkleTree.getRoot(),
-    await blockTimestamp() + 10000,
-    await blockTimestamp(),
-    100000,
+    (60 * 60), // 1 hour
+    (60 * 60), // 1 hour
     fakeUSD.address,
     await owner.getAddress(),
   );
 
   await presale.setIssuedToken(fakeSaftelyToken.address);
 
-  // Print config required to run dApp
+  // Print config required to run dApp;
   const deployedContracts: DeployedContracts = {
     USDC:    fakeUSD.address,
     PRESALE: presale.address,
-    OWNER: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', // Account #0
+    DAO_MULTISIG: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', // Account #0
   };
 
-  await fakeUSD.connect(owner).mint(deployedContracts.OWNER, "50000000000000000000000");
+  await fakeUSD.connect(owner).mint(deployedContracts.DAO_MULTISIG, "50000000000000000000000");
 
   const contractAddressAsMapping = deployedContracts as unknown as {[key: string]: string}
   

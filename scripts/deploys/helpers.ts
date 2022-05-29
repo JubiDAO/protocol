@@ -1,5 +1,6 @@
 import { network } from "hardhat";
-import { BaseContract, ContractFactory, ContractTransaction } from "ethers";
+import { BaseContract, BigNumber, ContractFactory, ContractTransaction } from "ethers";
+import fs from 'fs';
 
 /**
  * Wait for a transaction to mine
@@ -22,17 +23,21 @@ export async function deployAndMine<T extends BaseContract, D extends (...args: 
     throw new Error("Contract factory and deploy method don't match");
   }
 
-  const renderedArgs: string = args.map(a => a.toString()).join(' ');
-
-  console.log(`*******Deploying ${name} on ${network.name} with args ${renderedArgs}`);
+  console.log(`*******Deploying ${name} on ${network.name} with args ${JSON.stringify(args, null, 2)}`);
   const contract = await factory.deploy(...args) as T;
   console.log(`Deployed... waiting for transaction to mine`);
   console.log();
   await contract.deployed();
   console.log('Contract deployed');
-  console.log(`${name}=${contract.address}`);
   console.log(`export ${name}=${contract.address}`);
-  console.log(`yarn hardhat verify --network ${network.name} ${contract.address} ${renderedArgs}`);
+
+  const deployArgsDir = `${__dirname}/../../deployed-args/${network.name}`;
+  if (!fs.existsSync(deployArgsDir)) {
+    fs.mkdirSync(deployArgsDir);
+  }
+  fs.writeFileSync(`${deployArgsDir}/${contract.address}`, `module.exports = ${JSON.stringify(args, null, 2)}`)
+
+  console.log(`hardhat verify args written to ${deployArgsDir}/${contract.address}`);
   console.log('********************\n');
 
   return contract;
@@ -47,16 +52,20 @@ const expectedEnvvars: {[key: string]: string[]} = {
 /**
  * Check if the required environment variables exist
  */
-export function ensureExpectedEnvvars() {
+export function ensureExpectedEnvvars(args: {[key: string]: string}) {
   let hasAllExpectedEnvVars = true;
-  for (const envvarName of expectedEnvvars[network.name]) {
+  for (const envvarName of expectedEnvvars[network.name].concat(Object.keys(args))) {
     if (!process.env[envvarName]) {
       console.error(`Missing environment variable ${envvarName}`);
       hasAllExpectedEnvVars = false;
     }
+
+    args[envvarName] = process.env[envvarName] || '';
   }
 
   if (!hasAllExpectedEnvVars) {
     throw new Error(`Expected envvars missing`);
   }
+
+  return args;
 }
