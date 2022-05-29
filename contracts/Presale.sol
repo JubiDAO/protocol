@@ -17,8 +17,9 @@ contract Presale is Ownable {
     /// @dev Hard cap on round
     uint256 public immutable hardCap;
 
-    /// @dev when the vesting starts
-    uint256 public immutable vestingStartTimestamp;
+    /// @dev vesting cliff duration, kicks in after the token
+    /// is created and set (ie, after setIssuedToken is called)
+    uint256 public immutable vestingCliffDuration;
 
     /// @dev when the vesting starts
     uint256 public immutable vestingDuration;
@@ -42,6 +43,9 @@ contract Presale is Ownable {
     /// not immutable as we expect to set this once we complete the presale
     IERC20 public issuedToken;
 
+    /// @dev when the vesting starts
+    uint256 public issuedTokenAtTimestamp;
+
     mapping(address => uint256) public allocation;
     uint256 public totalAllocated;
 
@@ -54,14 +58,14 @@ contract Presale is Ownable {
     constructor(
         uint256 _hardCap,
         bytes32 _inviteCodesMerkleRoot,
-        uint256 _vestingStartTimestamp,
+        uint256 _vestingCliffDuration,
         uint256 _vestingDuration,
         IERC20 _raiseToken,
         address _daoMultisig
     ) {
         hardCap = _hardCap;
         inviteCodesMerkleRoot = _inviteCodesMerkleRoot;
-        vestingStartTimestamp = _vestingStartTimestamp;
+        vestingCliffDuration = _vestingCliffDuration;
         vestingDuration = _vestingDuration;
         raiseToken = _raiseToken;
         daoMultisig = _daoMultisig;
@@ -89,11 +93,16 @@ contract Presale is Ownable {
 
     function calculateClaimable(address account) public view returns (uint256 share, uint256 amount)
     {
-        if (block.timestamp < vestingStartTimestamp) {
+        if (address(issuedToken) == address(0)) {
             return (0,0);
         }
 
         if (totalAllocated == totalClaimed) {
+            return (0,0);
+        }
+
+        uint256 vestingStartTimestamp = issuedTokenAtTimestamp + vestingCliffDuration;
+        if (block.timestamp < vestingStartTimestamp) {
             return (0,0);
         }
 
@@ -116,10 +125,12 @@ contract Presale is Ownable {
         emit Claimed(account, claimable);
     }
 
-    /// @dev owner only. set issued token, needs to be created before
-    /// vest start date
+    /// @dev owner only. set issued token. Can only be called once
+    /// and kicks of vesting
     function setIssuedToken(IERC20 _issuedToken) external onlyOwner {
+        require(address(issuedToken) == address(0), "Presale: Issued token already sent");
         issuedToken = _issuedToken;
+        issuedTokenAtTimestamp = block.timestamp;
     }
 
     /// @dev owner only. Close round

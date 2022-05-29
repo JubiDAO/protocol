@@ -47,11 +47,10 @@ describe('Dogfood Presale Tests', function () {
     inviteCodes = ["asdf12", "123asdf", "SLKJ3n1", "098123AS", "09lkmqwe", "S3JOInsa"];
     inviteMerkleTree = new MerkleTree(inviteCodes.map(c => keccak256(c)), keccak256, {sortPairs: true});
 
-    const now = await blockTimestamp()
     presale = await new Presale__factory(owner).deploy(
       toAtto(1000),
       inviteMerkleTree.getRoot(),
-      now + SECONDS_IN_ONE_WEEK,
+      SECONDS_IN_ONE_WEEK,
       SECONDS_IN_ONE_MONTH,
       usdcToken.address,
       await daoMultisig.getAddress()
@@ -127,6 +126,19 @@ describe('Dogfood Presale Tests', function () {
       await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
       await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
 
+      expect(await presale.calculateClaimable(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
+      expect(await presale.calculateClaimable(await ash.getAddress())).eql([0,0].map(BigNumber.from));
+    });
+
+    it('No tokens claimable durinv vesting cliff', async function () {
+      await presale.setIssuedToken(issuedToken.address)
+      await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
+
+      expect(await presale.calculateClaimable(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
+      expect(await presale.calculateClaimable(await ash.getAddress())).eql([0,0].map(BigNumber.from));
+
+      await advance(SECONDS_IN_ONE_WEEK / 2);
       expect(await presale.calculateClaimable(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
       expect(await presale.calculateClaimable(await ash.getAddress())).eql([0,0].map(BigNumber.from));
     });
