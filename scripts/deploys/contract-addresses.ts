@@ -6,7 +6,7 @@ export interface DeployedContracts {
 
 export const DEPLOYED_CONTRACTS: {[key: string]: DeployedContracts} = {
   mainnet: {
-    PRESALE: '0x07Fb958cA43036c82c442Da3F308771555DF331E',
+    PRESALE: '0xF2d77A3b88668c0FA1B9B5cc0ffde90D3DFAaBaE',
 
     // part of mainnet Environment
     USDC: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
