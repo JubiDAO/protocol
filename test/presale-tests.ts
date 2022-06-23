@@ -88,7 +88,7 @@ describe('Dogfood Presale Tests', function () {
       { qty: 10, minInvestment: 1000, maxInvestment: 10000 },
     ]);
 
-    inviteMerkleTree = inviteCodesToMerkleTree(inviteCodesData);
+    inviteMerkleTree = await inviteCodesToMerkleTree(inviteCodesData);
 
     presale = await new Presale__factory(owner).deploy(
       HARD_CAP,

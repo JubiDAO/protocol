@@ -22,21 +22,7 @@ async function main() {
     true
   );
 
-  const inviteCodesKeys = [...inviteCodes.keys()];
-  const inviteCodesValues = [...inviteCodes.values()];
-  const inviteCodesSize = inviteCodes.size;
-
-  const inviteCodesToRange: Record<string, InviteCodeRange> = {};
-  for (let i = 0; i < inviteCodesSize; i++) {
-    inviteCodesToRange[inviteCodesKeys[i]] = {
-      maxInvestment: inviteCodesValues[i].maxInvestment,
-      minInvestment: inviteCodesValues[i].minInvestment,
-    };
-  }
-  await writeFile("invite-codes_local.json", JSON.stringify(inviteCodesToRange));
-
-
-  const inviteMerkleTree: MerkleTree = inviteCodesToMerkleTree(inviteCodes);
+  const inviteMerkleTree: MerkleTree = await inviteCodesToMerkleTree(inviteCodes, true);
 
   const leaves = inviteMerkleTree
     .getLeaves()
