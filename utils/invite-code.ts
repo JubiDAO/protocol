@@ -1,14 +1,14 @@
 import { BigNumber } from "ethers";
-import { concat, defaultAbiCoder } from "ethers/lib/utils";
+import { defaultAbiCoder } from "ethers/lib/utils";
 import keccak256 from "keccak256";
 import { MerkleTree } from "merkletreejs";
 import ShortUniqueId from "short-unique-id";
+import { fromAtto, toAtto } from '../shared/utils';
 import { InviteCodeConfig, InviteCodeRange } from "../types/invite-code";
 import { writeFile } from "./file";
 
 export const genCode = new ShortUniqueId({ length: 8 });
 
-/* TODO: add options? so it can print/generate CSV or needed files */
 export const generateInviteCodes = async (
   inviteCodeConfig: Array<InviteCodeConfig>,
   genCSV = false
@@ -48,13 +48,13 @@ export const generateInviteCodes = async (
 
 export const getInviteCodeHashedLeaf = (
   hashedInvitedCode: string,
-  minInvestment: BigNumber,
-  maxInvestment: BigNumber
+  minInvestment: number,
+  maxInvestment: number
 ) => {
   return keccak256(
     defaultAbiCoder.encode(
       ["string", "uint256", "uint256"],
-      [hashedInvitedCode, minInvestment, maxInvestment]
+      [hashedInvitedCode, toAtto(minInvestment), toAtto(maxInvestment)]
     )
   ).toString("hex");
 };
@@ -62,9 +62,7 @@ export const getInviteCodeHashedLeaf = (
 export const inviteCodesToMerkleTree = (
   inviteCodes: Map<string, InviteCodeRange>
 ): MerkleTree => {
-  // @ts-ignore
   const inviteCodesKeys = [...inviteCodes.keys()];
-  // @ts-ignore
   const inviteCodesValues = [...inviteCodes.values()];
   const inviteCodesSize = inviteCodes.size;
   const merkleTreeLeaves: Array<string> = [];

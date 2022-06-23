@@ -7,9 +7,10 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
- * @title Contract to Fund start ups
- * @author @T04435
- * @notice You can use this Contract to Fund `daoMultisig` with `raiseToken` to launch their project. In return you will get `issuedToken` once `hurdle` is meet and round is closed; in case the hurdle is not meet you can get your investment back :)
+ * @title Token management for a funding round
+ * @notice Funds `daoMultisig` with `raiseToken` once round is closed and `hurdle` is met.
+ * Funders will get `issuedToken` on a round close, once vesting conditions are met.
+ * If the `hurdle` isn't cleared, funders can claim back their initial investment.
  */
 contract Presale is Ownable {
     /// @dev Is the round open
@@ -75,21 +76,19 @@ contract Presale is Ownable {
     }
 
     /**
-     * @notice Will deposit `amount` of token `raisedToken` for this Presale Round
+     * @notice Deposit `amount` of token `raiseToken` for this Round. Requires valid `amount` as per `inviteCode`
      */
     function depositFor(address account, uint256 amount, uint256 minInvestment, uint256 maxInvestment, bytes memory inviteCode, bytes32[] calldata merkleProof) external {
         require(account != address(0), "Presale: Address cannot be 0x0");
         require(isOpen, "Presale: Round closed");
         require(hardCap > totalAllocated, "Presale: Round closed, goal reached");
 
-        /// We only check minInvestment as, if amount excedes maxInvestment it will be scale down.
+        // We only check minInvestment as, if amount excedes maxInvestment it will be scale down.
         require(allocation[account] >= minInvestment || amount >= minInvestment, "Presale: Can not invest less than minimum amount");
 
         require(MerkleProof.verify(merkleProof, inviteCodesMerkleRoot, keccak256(abi.encode(inviteCode, minInvestment, maxInvestment))), "Presale: Invalid invite code");
 
-        if (claimedInvites[inviteCode] != address(0)) {
-            require(claimedInvites[inviteCode] == account, "Presale: You can only invest with one wallet per invite code");
-        }
+        require(claimedInvites[inviteCode] == account || claimedInvites[inviteCode] == address(0) , "Presale: You can only invest with one wallet per invite code");
 
         uint256 remainingAllocation = hardCap - totalAllocated;
         if (remainingAllocation < amount) {
@@ -114,7 +113,6 @@ contract Presale is Ownable {
     /// @dev Calculates the claimable amount for a given account in a given timestamp
     /// @param account Account to get data from
     /// @param timestamp => can be used to calculate claimable amount in a time other than block.timestamp
-    ///   provide 0 to use timestamp
     function calculateClaimable(address account, uint256 timestamp) public view returns (uint256 share, uint256 amount)
     {
         if (address(issuedToken) == address(0)) {
@@ -125,17 +123,12 @@ contract Presale is Ownable {
             return (0,0);
         }
 
-        uint256 calculationTimestamp = block.timestamp;
-        if (timestamp > 0) {
-            calculationTimestamp = timestamp;
-        }
-
         uint256 vestingStartTimestamp = issuedTokenAtTimestamp + vestingCliffDuration;
-        if (calculationTimestamp < vestingStartTimestamp) {
+        if (timestamp < vestingStartTimestamp) {
             return (0,0);
         }
 
-        uint256 currentVestingDuration = calculationTimestamp - vestingStartTimestamp;
+        uint256 currentVestingDuration = timestamp - vestingStartTimestamp;
         if (currentVestingDuration > vestingDuration) {
             currentVestingDuration = vestingDuration;
         }
@@ -144,13 +137,17 @@ contract Presale is Ownable {
         amount = share * issuedToken.balanceOf(address(this)) / (totalAllocated - totalClaimed);
     }
 
+    function calculateClaimableNow(address account) public view returns (uint256, uint256) {
+        return calculateClaimable(account, block.timestamp);
+    }
+
     /**
-     *  @notice When round is closed if `hurdle` was meet you can claim your current allocation
-     *  if hurdle was not meet this can be used as a refundFor which will transfer all your investment to `account`
+     *  @notice Claim available allocation of 'issuedToken' if round is closed ( 'isOpen'=false ) and  `hurdle` amount was met
+     *  If the round is closed and `hurdle` was not met, claimFor will return invested amount of `raiseToken` to `account`
      */
     function claimFor(address account) external {
         require(!isOpen, "Presale: Can only claim once round is closed");
-        (uint256 share, uint256 claimable) = calculateClaimable(account, block.timestamp);
+        (uint256 share, uint256 claimable) = calculateClaimableNow(account);
 
         claimed[account] += share;
         totalClaimed += share;
@@ -162,7 +159,6 @@ contract Presale is Ownable {
     /// @dev owner only. set issued token. Can only be called once
     /// and kicks of vesting
     function setIssuedToken(IERC20 _issuedToken) external onlyOwner {
-        // update so it includes the Price/setup
         // check balance in the token is
         require(address(issuedToken) == address(0), "Presale: Issued token already sent");
         issuedToken = _issuedToken;
@@ -173,13 +169,14 @@ contract Presale is Ownable {
     function closeRound() external onlyOwner {
         isOpen = false;
 
-        /// @dev when round is closed if Hurdle is meet transfer funds to daoMultisig
+        // when round is closed if Hurdle is meet transfer funds to daoMultisig
         if (hurdle <= totalAllocated) {
             SafeERC20.safeTransfer(raiseToken, daoMultisig, totalAllocated);
         } else {
-            /// @dev when round is closed if Hurdle is NOT meet set the issuedToken to raiseToken so claimFor acts as a "refundFor"
+            // when the round is closed if Hurdle is NOT met set the issuedToken to raiseToken and remove any vesting so
+            // funders can call claimFor to refund their initial investment
             issuedToken = raiseToken;
-            /// @dev This will make so allocation is claimable right away
+            // This will make so allocation is claimable right away
             issuedTokenAtTimestamp = vestingCliffDuration;
         }
     }

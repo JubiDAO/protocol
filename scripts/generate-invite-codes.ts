@@ -11,8 +11,8 @@ import {
 const inviteCodesInputs: Array<InviteCodeConfig> = [
   {
     qty: 10,
-    maxInvestment: toAtto(10000),
-    minInvestment: toAtto(100),
+    maxInvestment: 10000,
+    minInvestment: 100,
   },
 ];
 
@@ -26,19 +26,15 @@ async function main() {
   const inviteCodesValues = [...inviteCodes.values()];
   const inviteCodesSize = inviteCodes.size;
 
-  let json: string = "{";
+  const inviteCodesToRange: Record<string, InviteCodeRange> = {};
   for (let i = 0; i < inviteCodesSize; i++) {
-    json = json.concat(
-      `"${inviteCodesKeys[i]}": {"minInvestment": ${
-        inviteCodesValues[i].minInvestment
-      },
-      "maxInvestment": ${inviteCodesValues[i].maxInvestment}}${
-        i + 1 < inviteCodesSize ? "," : ""
-      }`
-    );
+    inviteCodesToRange[inviteCodesKeys[i]] = {
+      maxInvestment: inviteCodesValues[i].maxInvestment,
+      minInvestment: inviteCodesValues[i].minInvestment,
+    };
   }
-  json = json.concat("}");
-  await writeFile("invite-codes_local.json", json);
+  await writeFile("invite-codes_local.json", JSON.stringify(inviteCodesToRange));
+
 
   const inviteMerkleTree: MerkleTree = inviteCodesToMerkleTree(inviteCodes);
 

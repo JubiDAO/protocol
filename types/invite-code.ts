@@ -1,8 +1,7 @@
-import { BigNumber } from "ethers";
 
 export interface InviteCodeRange {
-  minInvestment: BigNumber;
-  maxInvestment: BigNumber;
+  minInvestment: number;
+  maxInvestment: number;
 }
 
 export interface InviteCodeConfig extends InviteCodeRange {

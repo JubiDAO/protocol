@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import { Buffer } from "node:buffer";
-import path, { join } from "path";
+import { join } from "path";
 
 export const writeFile = async (
   filename: string,
@@ -13,6 +13,6 @@ export const writeFile = async (
     console.info(`File create: ${filePath}`);
   } catch (e) {
     console.error(e);
-    throw new Error("Failed to create merkle.json");
+    throw new Error(`Failed to create ${filename}`);
   }
 };
