@@ -8,3 +8,7 @@ artifacts
 cache
 .vscode/settings.json
 scripts/deploys/deployed-args/localhost
+
+# gen files, we want to kewep the folder to avoid extrac checks on code generation ;)
+gen/*
+!gen/.gitkeep
