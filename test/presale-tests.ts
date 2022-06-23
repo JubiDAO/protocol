@@ -234,7 +234,7 @@ describe('Dogfood Presale Tests', function () {
       await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
       await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
 
-      // Ensure Hurdle is meet
+      // Ensure Hurdle is met
       skipNInvites(8);
 
       await presale.depositFor(
@@ -446,7 +446,7 @@ describe('Dogfood Presale Tests', function () {
       expect(await presale.issuedToken()).eq(usdcToken.address);
     });
 
-    it("Investor can get refunds after round close and hurdle is not meet", async () => {
+    it("Investor can get refunds after round close and hurdle is not met", async () => {
       await presale.setIssuedToken(issuedToken.address);
       await presale.depositFor(
         await jeeva.getAddress(),
@@ -479,7 +479,7 @@ describe('Dogfood Presale Tests', function () {
         .withArgs(await INVESTOR3.getAddress(), toAtto(1000));
     });
 
-    it("Investor can get refunds when investing multiple times after round close and hurdle is not meet", async () => {
+    it("Investor can get refunds when investing multiple times after round close and hurdle is not met", async () => {
       await presale.setIssuedToken(issuedToken.address);
       await presale.depositFor(
         await jeeva.getAddress(),

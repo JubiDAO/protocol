@@ -169,7 +169,7 @@ contract Presale is Ownable {
     function closeRound() external onlyOwner {
         isOpen = false;
 
-        // when round is closed if Hurdle is meet transfer funds to daoMultisig
+        // when round is closed if Hurdle is met transfer funds to daoMultisig
         if (hurdle <= totalAllocated) {
             SafeERC20.safeTransfer(raiseToken, daoMultisig, totalAllocated);
         } else {
