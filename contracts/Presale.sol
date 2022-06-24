@@ -64,8 +64,12 @@ contract Presale is Ownable {
         uint256 _vestingCliffDuration,
         uint256 _vestingDuration,
         IERC20 _raiseToken,
-        address _daoMultisig
+        address _daoMultisig,
+        bool factory
     ) {
+        if (factory) {
+            _transferOwnership(_daoMultisig);
+        }
         hardCap = _hardCap;
         hurdle = _hurdle;
         inviteCodesMerkleRoot = _inviteCodesMerkleRoot;
