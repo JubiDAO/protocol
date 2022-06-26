@@ -43,7 +43,7 @@ export async function deployAndMine<T extends BaseContract, D extends (...args: 
   console.log('Contract deployed');
   console.log(`export ${name}=${contract.address}`);
 
-  const deployArgsDir = `${__dirname}/../../deployed-args/${network.name}`;
+  const deployArgsDir = `${__dirname}/deployed-args/${network.name}`;
   if (!fs.existsSync(deployArgsDir)) {
     fs.mkdirSync(deployArgsDir);
   }

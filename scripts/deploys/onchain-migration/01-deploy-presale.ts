@@ -1,16 +1,16 @@
 import '@nomiclabs/hardhat-ethers';
 import { ethers, network } from 'hardhat';
 
-import { Presale, Presale__factory  } from '../../typechain';
-import { DEPLOYED_CONTRACTS } from './contract-addresses';
+import { Presale, Presale__factory  } from '../../../typechain';
+import { DEPLOYED_CONTRACTS } from '../contract-addresses';
 
 import { MerkleTree } from 'merkletreejs';
 import keccak256 from 'keccak256';
 import fs from 'fs';
 
-import { toAtto } from '../../shared/utils';
+import { toAtto } from '../../../shared/utils';
 
-import { deployAndMine, ensureExpectedEnvvars, mine } from './helpers';
+import { deployAndMine, ensureExpectedEnvvars, mine } from '../helpers';
 import { BigNumber } from 'ethers';
 
 async function main() {

@@ -7,4 +7,4 @@ typechain
 artifacts
 cache
 .vscode/settings.json
-deployed-args/localhost
+scripts/deploys/deployed-args/localhost
