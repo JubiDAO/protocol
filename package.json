@@ -37,6 +37,7 @@
     "test": "hardhat test",
     "local-node": "hardhat node",
     "local-deploy": "hardhat run --network localhost scripts/deploys/local.ts",
+    "local-gen-invite-codes": "hardhat run --network localhost scripts/generate-invite-codes.ts",
     "hardhat:local": "hardhat --network localhost",
     "hardhat:testnet": "hardhat --network rinkeby",
     "hardhat:mainnet": "hardhat --network mainnet"
