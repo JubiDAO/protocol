@@ -5,9 +5,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Presale.sol";
 
 /**
- * @title Contract to Create Jubi's Presale Contract
- * @author @T04435
- * @notice You can use this Contract to create new Instances of Jubi Presale Contracts `Presale.sol`
+ * @title Contract factory to manage rounds
+ * @notice You can use this Contract to create new funding rounds
  */
 contract RoundFactory is Ownable {
 
@@ -29,7 +28,7 @@ contract RoundFactory is Ownable {
 
     constructor() {}
 
-    /// @notice Creates a Presale Contract with `config` as params
+    /// @notice Creates a Round with `config` as params
     function createRound(PresaleConfig memory config) external {
         uint256 hardCap = config.hardCap;
         uint256 hurdle = config.hurdle;
