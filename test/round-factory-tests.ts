@@ -6,8 +6,8 @@ import { toAtto } from "../shared/utils";
 import {
   FakeERC20,
   FakeERC20__factory,
-  JubiFactory,
-  JubiFactory__factory,
+  RoundFactory,
+  RoundFactory__factory,
   Presale,
   Presale__factory,
 } from "../typechain";
@@ -18,7 +18,7 @@ import {
   inviteCodesToMerkleTree,
 } from "../utils/invite-code";
 // @ts-ignore
-import PresaleConfigStruct = JubiFactory.PresaleConfigStruct;
+import PresaleConfigStruct = RoundFactory.PresaleConfigStruct;
 
 const SECONDS_IN_ONE_WEEK = 604800;
 const SECONDS_IN_ONE_MONTH = 2628000;
@@ -26,8 +26,8 @@ const ONLY_OWNER_ERROR = "Ownable: caller is not the owner";
 const HARD_CAP = toAtto(10000);
 const HURDLE = toAtto(10000).div(2);
 
-describe("Jubi Factory Tests", () => {
-  let JUBI_FACTORY: JubiFactory;
+describe("Round Factory Tests", () => {
+  let roundFactory: RoundFactory;
   let PRESALE: Presale;
   let OWNER: Signer;
   let VENTURE1: Signer;
@@ -97,7 +97,7 @@ describe("Jubi Factory Tests", () => {
       "ISSUED_TOKEN"
     );
 
-    JUBI_FACTORY = await new JubiFactory__factory().connect(OWNER).deploy();
+    roundFactory = await new RoundFactory__factory().connect(OWNER).deploy();
 
     inviteCodesData = await generateInviteCodes([
       { qty: 10, minInvestment: 100, maxInvestment: 1000 },
@@ -120,22 +120,22 @@ describe("Jubi Factory Tests", () => {
 
   describe("Deployment/Management", () => {
     it("should set the right owner", async () => {
-      expect(await JUBI_FACTORY.owner()).to.equal(await OWNER.getAddress());
+      expect(await roundFactory.owner()).to.equal(await OWNER.getAddress());
     });
 
     it("should allow owner to renounce", async () => {
-      await JUBI_FACTORY.renounceOwnership();
-      expect(await JUBI_FACTORY.owner()).to.equal(ethers.constants.AddressZero);
+      await roundFactory.renounceOwnership();
+      expect(await roundFactory.owner()).to.equal(ethers.constants.AddressZero);
     });
 
     it("should allow owner to transfer ownership", async () => {
-      await JUBI_FACTORY.transferOwnership(await VENTURE1.getAddress());
-      expect(await JUBI_FACTORY.owner()).to.equal(await VENTURE1.getAddress());
+      await roundFactory.transferOwnership(await VENTURE1.getAddress());
+      expect(await roundFactory.owner()).to.equal(await VENTURE1.getAddress());
     });
 
     it("only owner can create a Round", async () => {
       await expect(
-        JUBI_FACTORY.connect(VENTURE1).createRound(roundConfig)
+        roundFactory.connect(VENTURE1).createRound(roundConfig)
       ).to.revertedWith(ONLY_OWNER_ERROR);
     });
   });
@@ -143,15 +143,15 @@ describe("Jubi Factory Tests", () => {
   describe("TXNs", () => {
     describe("Round Creation", () => {
       it("should create a round", async () => {
-        let rounds = await JUBI_FACTORY.getRounds(roundConfig.daoMultisig);
+        let rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
         expect(rounds.length).eq(0);
-        await JUBI_FACTORY.createRound(roundConfig);
+        await roundFactory.createRound(roundConfig);
 
-        rounds = await JUBI_FACTORY.getRounds(roundConfig.daoMultisig);
+        rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
         expect(rounds.length).eq(1);
 
-        const eventFilters = JUBI_FACTORY.filters.RoundCreated();
-        const events = await JUBI_FACTORY.queryFilter(eventFilters, "latest");
+        const eventFilters = roundFactory.filters.RoundCreated();
+        const events = await roundFactory.queryFilter(eventFilters, "latest");
         const [ventureAddress, roundAddress] = events[0].args;
 
         expect(ventureAddress).to.equal(roundConfig.daoMultisig);
@@ -160,15 +160,15 @@ describe("Jubi Factory Tests", () => {
       });
 
       it("should create multiple rounds for same Venture", async () => {
-        let rounds = await JUBI_FACTORY.getRounds(roundConfig.daoMultisig);
+        let rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
         expect(rounds.length).eq(0);
         for (let i = 0; i < 3; i++) {
-          await JUBI_FACTORY.createRound(roundConfig);
-          rounds = await JUBI_FACTORY.getRounds(roundConfig.daoMultisig);
+          await roundFactory.createRound(roundConfig);
+          rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
           expect(rounds.length).eq(i + 1);
 
-          const eventFilters = JUBI_FACTORY.filters.RoundCreated();
-          const events = await JUBI_FACTORY.queryFilter(eventFilters, "latest");
+          const eventFilters = roundFactory.filters.RoundCreated();
+          const events = await roundFactory.queryFilter(eventFilters, "latest");
           const [ventureAddress, roundAddress] = events[0].args;
           expect(ventureAddress).to.equal(roundConfig.daoMultisig);
           expect(roundAddress.toLowerCase()).to.equal(rounds[i]);
@@ -177,17 +177,17 @@ describe("Jubi Factory Tests", () => {
 
       it("should create multiple rounds for multiple Ventures", async () => {
         for (const venture of [VENTURE1_ADDRESS, VENTURE2_ADDRESS]) {
-          let rounds = await JUBI_FACTORY.getRounds(venture);
+          let rounds = await roundFactory.getRounds(venture);
           for (let i = 0; i < 3; i++) {
             expect(rounds.length).eq(i);
-            await JUBI_FACTORY.createRound({
+            await roundFactory.createRound({
               ...roundConfig,
               daoMultisig: venture,
             });
-            rounds = await JUBI_FACTORY.getRounds(venture);
+            rounds = await roundFactory.getRounds(venture);
 
-            const eventFilters = JUBI_FACTORY.filters.RoundCreated();
-            const events = await JUBI_FACTORY.queryFilter(
+            const eventFilters = roundFactory.filters.RoundCreated();
+            const events = await roundFactory.queryFilter(
               eventFilters,
               "latest"
             );
@@ -202,15 +202,15 @@ describe("Jubi Factory Tests", () => {
 
     describe("Rounds", () => {
       beforeEach(async () => {
-        let rounds = await JUBI_FACTORY.getRounds(roundConfig.daoMultisig);
+        let rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
         expect(rounds.length).eq(0);
-        await JUBI_FACTORY.createRound(roundConfig);
+        await roundFactory.createRound(roundConfig);
 
-        rounds = await JUBI_FACTORY.getRounds(roundConfig.daoMultisig);
+        rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
         expect(rounds.length).eq(1);
 
-        const eventFilters = JUBI_FACTORY.filters.RoundCreated();
-        const events = await JUBI_FACTORY.queryFilter(eventFilters, "latest");
+        const eventFilters = roundFactory.filters.RoundCreated();
+        const events = await roundFactory.queryFilter(eventFilters, "latest");
         const [ventureAddress, roundAddress] = events[0].args;
         expect(ventureAddress).to.equal(roundConfig.daoMultisig);
         expect(roundAddress.toLowerCase()).to.equal(rounds[0]);

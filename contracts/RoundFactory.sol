@@ -9,7 +9,7 @@ import "./Presale.sol";
  * @author @T04435
  * @notice You can use this Contract to create new Instances of Jubi Presale Contracts `Presale.sol`
  */
-contract JubiFactory is Ownable {
+contract RoundFactory is Ownable {
 
     struct PresaleConfig {
         uint256 hardCap;
