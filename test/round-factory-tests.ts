@@ -133,58 +133,51 @@ describe("Round Factory Tests", () => {
       expect(await roundFactory.owner()).to.equal(await VENTURE1.getAddress());
     });
 
-    it("only owner can create a Round", async () => {
-      await expect(
-        roundFactory.connect(VENTURE1).createRound(roundConfig)
-      ).to.revertedWith(ONLY_OWNER_ERROR);
-    });
   });
 
   describe("TXNs", () => {
     describe("Round Creation", () => {
       it("should create a round", async () => {
-        let rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
+        let rounds = await roundFactory.getRounds(OWNER_ADDRESS);
         expect(rounds.length).eq(0);
         await roundFactory.createRound(roundConfig);
 
-        rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
+        rounds = await roundFactory.getRounds(OWNER_ADDRESS);
         expect(rounds.length).eq(1);
 
         const eventFilters = roundFactory.filters.RoundCreated();
         const events = await roundFactory.queryFilter(eventFilters, "latest");
         const [ventureAddress, roundAddress] = events[0].args;
 
-        expect(ventureAddress).to.equal(roundConfig.daoMultisig);
+        expect(ventureAddress).to.equal(OWNER_ADDRESS);
 
         expect(roundAddress.toLowerCase()).to.equal(rounds[0]);
       });
 
       it("should create multiple rounds for same Venture", async () => {
-        let rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
+        let rounds = await roundFactory.getRounds(OWNER_ADDRESS);
         expect(rounds.length).eq(0);
         for (let i = 0; i < 3; i++) {
           await roundFactory.createRound(roundConfig);
-          rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
+          rounds = await roundFactory.getRounds(OWNER_ADDRESS);
           expect(rounds.length).eq(i + 1);
 
           const eventFilters = roundFactory.filters.RoundCreated();
           const events = await roundFactory.queryFilter(eventFilters, "latest");
           const [ventureAddress, roundAddress] = events[0].args;
-          expect(ventureAddress).to.equal(roundConfig.daoMultisig);
+          expect(ventureAddress).to.equal(OWNER_ADDRESS);
           expect(roundAddress.toLowerCase()).to.equal(rounds[i]);
         }
       });
 
       it("should create multiple rounds for multiple Ventures", async () => {
-        for (const venture of [VENTURE1_ADDRESS, VENTURE2_ADDRESS]) {
-          let rounds = await roundFactory.getRounds(venture);
+        for (const venture of [VENTURE1, VENTURE2]) {
+          const ventureAddressCheck: string = await venture.getAddress();
+          let rounds = await roundFactory.getRounds(ventureAddressCheck);
           for (let i = 0; i < 3; i++) {
             expect(rounds.length).eq(i);
-            await roundFactory.createRound({
-              ...roundConfig,
-              daoMultisig: venture,
-            });
-            rounds = await roundFactory.getRounds(venture);
+            await roundFactory.connect(venture).createRound(roundConfig);
+            rounds = await roundFactory.getRounds(ventureAddressCheck);
 
             const eventFilters = roundFactory.filters.RoundCreated();
             const events = await roundFactory.queryFilter(
@@ -193,7 +186,7 @@ describe("Round Factory Tests", () => {
             );
 
             const [ventureAddress, roundAddress] = events[0].args;
-            expect(ventureAddress).to.equal(venture);
+            expect(ventureAddress).to.equal(ventureAddressCheck);
             expect(roundAddress.toLowerCase()).to.equal(rounds[i]);
           }
         }
@@ -202,17 +195,17 @@ describe("Round Factory Tests", () => {
 
     describe("Rounds", () => {
       beforeEach(async () => {
-        let rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
+        let rounds = await roundFactory.getRounds(OWNER_ADDRESS);
         expect(rounds.length).eq(0);
         await roundFactory.createRound(roundConfig);
 
-        rounds = await roundFactory.getRounds(roundConfig.daoMultisig);
+        rounds = await roundFactory.getRounds(OWNER_ADDRESS);
         expect(rounds.length).eq(1);
 
         const eventFilters = roundFactory.filters.RoundCreated();
         const events = await roundFactory.queryFilter(eventFilters, "latest");
         const [ventureAddress, roundAddress] = events[0].args;
-        expect(ventureAddress).to.equal(roundConfig.daoMultisig);
+        expect(ventureAddress).to.equal(OWNER_ADDRESS);
         expect(roundAddress.toLowerCase()).to.equal(rounds[0]);
         PRESALE = new Presale__factory(OWNER).attach(roundAddress);
 
@@ -222,13 +215,13 @@ describe("Round Factory Tests", () => {
 
       describe("Management", () => {
         it("should set the right owner", async () => {
-          expect(await PRESALE.owner()).to.equal(VENTURE1_ADDRESS);
+          expect(await PRESALE.owner()).to.equal(OWNER_ADDRESS);
         });
         it("should only allow owner to close round", async () => {
           await expect(PRESALE.connect(VENTURE2).closeRound())
             .to.revertedWith(ONLY_OWNER_ERROR);
 
-          await PRESALE.connect(VENTURE1).closeRound();
+          await PRESALE.connect(OWNER).closeRound();
           expect(await PRESALE.isOpen()).false;
         });
       });

@@ -97,8 +97,7 @@ describe('Dogfood Presale Tests', function () {
       SECONDS_IN_ONE_WEEK,
       SECONDS_IN_ONE_MONTH,
       usdcToken.address,
-      await daoMultisig.getAddress(),
-      false
+      await daoMultisig.getAddress()
     );
 
     await usdcToken.mint(await owner.getAddress(), toAtto(10000000000));

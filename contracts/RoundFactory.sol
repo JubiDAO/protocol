@@ -30,7 +30,7 @@ contract RoundFactory is Ownable {
     constructor() {}
 
     /// @notice Creates a Presale Contract with `config` as params
-    function createRound(PresaleConfig memory config) external onlyOwner {
+    function createRound(PresaleConfig memory config) external {
         uint256 hardCap = config.hardCap;
         uint256 hurdle = config.hurdle;
         bytes32 inviteCodesMerkleRoot = config.inviteCodesMerkleRoot;
@@ -39,11 +39,12 @@ contract RoundFactory is Ownable {
         IERC20 raiseToken = config.raiseToken;
         address daoMultisig = config.daoMultisig;
 
-        Presale Round = new Presale(hardCap, hurdle, inviteCodesMerkleRoot, vestingCliffDuration, vestingDuration, raiseToken, daoMultisig, true);
+        Presale Round = new Presale(hardCap, hurdle, inviteCodesMerkleRoot, vestingCliffDuration, vestingDuration, raiseToken, daoMultisig);
+        Round.transferOwnership(msg.sender);
 
-        ventureRounds[daoMultisig].push(Round);
+        ventureRounds[msg.sender].push(Round);
 
-        emit RoundCreated(daoMultisig, Round);
+        emit RoundCreated(msg.sender, Round);
     }
 
     /// @notice Retrieves the list of rounds for the Venture: `venture`
