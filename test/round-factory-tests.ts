@@ -28,21 +28,20 @@ const HURDLE = toAtto(10000).div(2);
 
 describe("Round Factory Tests", () => {
   let roundFactory: RoundFactory;
-  let PRESALE: Presale;
-  let OWNER: Signer;
-  let VENTURE1: Signer;
-  let VENTURE2: Signer;
-  let INVESTOR1: Signer;
-  let INVESTOR2: Signer;
-  let INVESTOR3: Signer;
+  let presale: Presale;
+  let owner: Signer;
+  let airTree: Signer;
+  let blackbird: Signer;
+  let jeeva: Signer;
+  let ash: Signer;
   let daoMultisig: Signer;
-  let OWNER_ADDRESS: string;
-  let VENTURE1_ADDRESS: string;
-  let VENTURE2_ADDRESS: string;
-  let INVESTOR1_ADDRESS: string;
-  let INVESTOR2_ADDRESS: string;
-  let RAISED_TOKEN: FakeERC20;
-  let ISSUED_TOKEN: FakeERC20;
+  let owner_address: string;
+  let airTree_address: string;
+  let blackbird_address: string;
+  let jeeva_address: string;
+  let ash_address: string;
+  let raisedToken: FakeERC20;
+  let issuedToken: FakeERC20;
   let inviteMerkleTree: MerkleTree;
   let inviteMerkleRoot: Buffer;
   let inviteCodesData: Map<string, InviteCodeRange>;
@@ -80,24 +79,24 @@ describe("Round Factory Tests", () => {
   };
 
   beforeEach(async () => {
-    [OWNER, VENTURE1, VENTURE2, INVESTOR1, INVESTOR2, INVESTOR3, daoMultisig] =
+    [owner, airTree, blackbird, jeeva, ash, daoMultisig] =
       await ethers.getSigners();
 
-    OWNER_ADDRESS = await OWNER.getAddress();
-    VENTURE1_ADDRESS = await VENTURE1.getAddress();
-    VENTURE2_ADDRESS = await VENTURE2.getAddress();
-    INVESTOR1_ADDRESS = await INVESTOR1.getAddress();
-    INVESTOR2_ADDRESS = await INVESTOR2.getAddress();
-    RAISED_TOKEN = await new FakeERC20__factory(OWNER).deploy(
+    owner_address = await owner.getAddress();
+    airTree_address = await airTree.getAddress();
+    blackbird_address = await blackbird.getAddress();
+    jeeva_address = await jeeva.getAddress();
+    ash_address = await ash.getAddress();
+    raisedToken = await new FakeERC20__factory(owner).deploy(
       "RAISED_TOKEN",
       "RAISED_TOKEN"
     );
-    ISSUED_TOKEN = await new FakeERC20__factory(OWNER).deploy(
+    issuedToken = await new FakeERC20__factory(owner).deploy(
       "ISSUED_TOKEN",
       "ISSUED_TOKEN"
     );
 
-    roundFactory = await new RoundFactory__factory().connect(OWNER).deploy();
+    roundFactory = await new RoundFactory__factory().connect(owner).deploy();
 
     inviteCodesData = await generateInviteCodes([
       { qty: 10, minInvestment: 100, maxInvestment: 1000 },
@@ -108,10 +107,10 @@ describe("Round Factory Tests", () => {
     inviteMerkleRoot = inviteMerkleTree.getRoot();
 
     roundConfig = {
-      daoMultisig: VENTURE1_ADDRESS,
+      daoMultisig: airTree_address,
       hardCap: HARD_CAP,
       hurdle: HURDLE,
-      raiseToken: RAISED_TOKEN.address,
+      raiseToken: raisedToken.address,
       vestingCliffDuration: SECONDS_IN_ONE_WEEK,
       vestingDuration: SECONDS_IN_ONE_MONTH,
       inviteCodesMerkleRoot: inviteMerkleRoot,
@@ -120,7 +119,7 @@ describe("Round Factory Tests", () => {
 
   describe("Deployment/Management", () => {
     it("should set the right owner", async () => {
-      expect(await roundFactory.owner()).to.equal(await OWNER.getAddress());
+      expect(await roundFactory.owner()).to.equal(await owner.getAddress());
     });
 
     it("should allow owner to renounce", async () => {
@@ -129,8 +128,8 @@ describe("Round Factory Tests", () => {
     });
 
     it("should allow owner to transfer ownership", async () => {
-      await roundFactory.transferOwnership(await VENTURE1.getAddress());
-      expect(await roundFactory.owner()).to.equal(await VENTURE1.getAddress());
+      await roundFactory.transferOwnership(await airTree.getAddress());
+      expect(await roundFactory.owner()).to.equal(await airTree.getAddress());
     });
 
   });
@@ -138,40 +137,40 @@ describe("Round Factory Tests", () => {
   describe("TXNs", () => {
     describe("Round Creation", () => {
       it("should create a round", async () => {
-        let rounds = await roundFactory.getRounds(OWNER_ADDRESS);
+        let rounds = await roundFactory.getRounds(owner_address);
         expect(rounds.length).eq(0);
         await roundFactory.createRound(roundConfig);
 
-        rounds = await roundFactory.getRounds(OWNER_ADDRESS);
+        rounds = await roundFactory.getRounds(owner_address);
         expect(rounds.length).eq(1);
 
         const eventFilters = roundFactory.filters.RoundCreated();
         const events = await roundFactory.queryFilter(eventFilters, "latest");
         const [ventureAddress, roundAddress] = events[0].args;
 
-        expect(ventureAddress).to.equal(OWNER_ADDRESS);
+        expect(ventureAddress).to.equal(owner_address);
 
         expect(roundAddress.toLowerCase()).to.equal(rounds[0]);
       });
 
       it("should create multiple rounds for same Venture", async () => {
-        let rounds = await roundFactory.getRounds(OWNER_ADDRESS);
+        let rounds = await roundFactory.getRounds(owner_address);
         expect(rounds.length).eq(0);
         for (let i = 0; i < 3; i++) {
           await roundFactory.createRound(roundConfig);
-          rounds = await roundFactory.getRounds(OWNER_ADDRESS);
+          rounds = await roundFactory.getRounds(owner_address);
           expect(rounds.length).eq(i + 1);
 
           const eventFilters = roundFactory.filters.RoundCreated();
           const events = await roundFactory.queryFilter(eventFilters, "latest");
           const [ventureAddress, roundAddress] = events[0].args;
-          expect(ventureAddress).to.equal(OWNER_ADDRESS);
+          expect(ventureAddress).to.equal(owner_address);
           expect(roundAddress.toLowerCase()).to.equal(rounds[i]);
         }
       });
 
       it("should create multiple rounds for multiple Ventures", async () => {
-        for (const venture of [VENTURE1, VENTURE2]) {
+        for (const venture of [airTree, blackbird]) {
           const ventureAddressCheck: string = await venture.getAddress();
           let rounds = await roundFactory.getRounds(ventureAddressCheck);
           for (let i = 0; i < 3; i++) {
@@ -195,53 +194,53 @@ describe("Round Factory Tests", () => {
 
     describe("Rounds", () => {
       beforeEach(async () => {
-        let rounds = await roundFactory.getRounds(OWNER_ADDRESS);
+        let rounds = await roundFactory.getRounds(owner_address);
         expect(rounds.length).eq(0);
         await roundFactory.createRound(roundConfig);
 
-        rounds = await roundFactory.getRounds(OWNER_ADDRESS);
+        rounds = await roundFactory.getRounds(owner_address);
         expect(rounds.length).eq(1);
 
         const eventFilters = roundFactory.filters.RoundCreated();
         const events = await roundFactory.queryFilter(eventFilters, "latest");
         const [ventureAddress, roundAddress] = events[0].args;
-        expect(ventureAddress).to.equal(OWNER_ADDRESS);
+        expect(ventureAddress).to.equal(owner_address);
         expect(roundAddress.toLowerCase()).to.equal(rounds[0]);
-        PRESALE = new Presale__factory(OWNER).attach(roundAddress);
+        presale = new Presale__factory(owner).attach(roundAddress);
 
-        await RAISED_TOKEN.mint(OWNER_ADDRESS, toAtto(10000000000));
-        await RAISED_TOKEN.approve(PRESALE.address, toAtto(10000000000));
+        await raisedToken.mint(owner_address, toAtto(10000000000));
+        await raisedToken.approve(presale.address, toAtto(10000000000));
       });
 
       describe("Management", () => {
         it("should set the right owner", async () => {
-          expect(await PRESALE.owner()).to.equal(OWNER_ADDRESS);
+          expect(await presale.owner()).to.equal(owner_address);
         });
         it("should only allow owner to close round", async () => {
-          await expect(PRESALE.connect(VENTURE2).closeRound())
+          await expect(presale.connect(blackbird).closeRound())
             .to.revertedWith(ONLY_OWNER_ERROR);
 
-          await PRESALE.connect(OWNER).closeRound();
-          expect(await PRESALE.isOpen()).false;
+          await presale.connect(owner).closeRound();
+          expect(await presale.isOpen()).false;
         });
       });
 
       describe("Round Interactions", () => {
         it("should be able to interact with a created Round", async () => {
-          await PRESALE.depositFor(
-            INVESTOR1_ADDRESS,
+          await presale.depositFor(
+            jeeva_address,
             toAtto(100),
             ...nextInvite()
           );
-          await PRESALE.depositFor(
-            INVESTOR2_ADDRESS,
+          await presale.depositFor(
+            ash_address,
             toAtto(500),
             ...nextInvite()
           );
 
-          expect(await PRESALE.allocation(INVESTOR1_ADDRESS)).eql(toAtto(100));
-          expect(await PRESALE.allocation(INVESTOR2_ADDRESS)).eql(toAtto(500));
-          expect(await PRESALE.totalAllocated()).eql(toAtto(600));
+          expect(await presale.allocation(jeeva_address)).eql(toAtto(100));
+          expect(await presale.allocation(ash_address)).eql(toAtto(500));
+          expect(await presale.totalAllocated()).eql(toAtto(600));
         });
       });
     });
