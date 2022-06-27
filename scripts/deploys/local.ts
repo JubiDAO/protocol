@@ -1,6 +1,6 @@
 import '@nomiclabs/hardhat-ethers';
 import { ethers } from 'hardhat';
-import { FakeERC20__factory, Presale__factory  } from '../../typechain';
+import { FakeERC20__factory, Presale__factory, RoundFactory__factory } from '../../typechain';
 import { DeployedContracts } from './contract-addresses';
 import { MerkleTree } from 'merkletreejs';
 
@@ -50,11 +50,12 @@ async function main() {
   );
 
   await presale.setIssuedToken(fakeSaftelyToken.address);
-
+  const roundFactory = await new RoundFactory__factory(owner).deploy();
   // Print config required to run dApp;
   const deployedContracts: DeployedContracts = {
     USDC:    fakeUSD.address,
     PRESALE: presale.address,
+    ROUND_FACTORY: roundFactory.address,
     DAO_MULTISIG: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266', // Account #0
   };
 
