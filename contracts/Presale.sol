@@ -100,8 +100,6 @@ contract Presale is Ownable {
             amount = remainingInvestment;
         }
 
-        require(amount > 0, "Presale: You have invest up to your limit");
-
         allocation[account] += amount;
         totalAllocated += amount;
         claimedInvites[inviteCode] = account;
@@ -159,7 +157,6 @@ contract Presale is Ownable {
     /// @dev owner only. set issued token. Can only be called once
     /// and kicks of vesting
     function setIssuedToken(IERC20 _issuedToken) external onlyOwner {
-        // check balance in the token is
         require(address(issuedToken) == address(0), "Presale: Issued token already sent");
         issuedToken = _issuedToken;
         issuedTokenAtTimestamp = block.timestamp;

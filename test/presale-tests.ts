@@ -327,25 +327,32 @@ describe('Dogfood Presale Tests', function () {
     it("Investor investment can not exceed Invite Code maxInvestment", async () => {
       const [min, max, inviteCode, proof] =
         nextInvite();
-      await presale.depositFor(
-        await jeeva.getAddress(),
-        min,
-        min,
-        max,
-        inviteCode,
-        proof
-      );
+
+      await expect(
+        presale.depositFor(
+          await jeeva.getAddress(),
+          min,
+          min,
+          max,
+          inviteCode,
+          proof
+        )
+      ).to.emit(presale, "Deposited").withArgs(await jeeva.getAddress(), min);
 
       expect(await presale.allocation(await jeeva.getAddress())).eql(min);
 
-      await presale.depositFor(
-        await jeeva.getAddress(),
-        max,
-        min,
-        max,
-        inviteCode,
-        proof
-      );
+      await expect(
+        presale.depositFor(
+          await jeeva.getAddress(),
+          max,
+          min,
+          max,
+          inviteCode,
+          proof
+        )
+      ).to.emit(presale, "Deposited").withArgs(await jeeva.getAddress(), max.sub(min));
+
+      expect(await presale.allocation(await jeeva.getAddress())).eql(max);
 
       await expect(
         presale.depositFor(
@@ -356,7 +363,7 @@ describe('Dogfood Presale Tests', function () {
           inviteCode,
           proof
         )
-      ).to.revertedWith(INVESTMENT_LIMIT_ERROR);
+      ).to.emit(presale, "Deposited").withArgs(await jeeva.getAddress(), 0)
 
       expect(await presale.allocation(await jeeva.getAddress())).eql(max);
     });
