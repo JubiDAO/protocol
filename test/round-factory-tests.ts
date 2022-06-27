@@ -72,12 +72,6 @@ describe("Round Factory Tests", () => {
     return [toAtto(min), toAtto(max), ...hashedInvite(nextKey, min, max)];
   };
 
-  const skipNInvites = (invitesToSkip: number): void => {
-    for (let i = 0; i < invitesToSkip; i++) {
-      nextInvite();
-    }
-  };
-
   beforeEach(async () => {
     [owner, airTree, blackbird, jeeva, ash, daoMultisig] =
       await ethers.getSigners();
