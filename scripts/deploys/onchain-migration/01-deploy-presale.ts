@@ -17,11 +17,13 @@ async function main() {
   const deployedContracts = DEPLOYED_CONTRACTS[network.name];
   const args: {
     HARD_CAP: string;
+    HURDLE: string;
     HASHED_INVITE_CODES_JSON: string; // filename containing a json array of  keccak256 hashed invite codes
     VESTING_CLIFF_DURATION: string;   // Vesting cliff for presale participants post token launch
     VESTING_DURATION: string;         // How long do presale participants vest (post cliff)
   } = {
     HARD_CAP: '',
+    HURDLE: '',
     HASHED_INVITE_CODES_JSON: '',
     VESTING_CLIFF_DURATION: '',
     VESTING_DURATION: '',
@@ -36,6 +38,7 @@ async function main() {
   const presaleFactory = new Presale__factory(owner)
   const presale: Presale = await deployAndMine("PRESALE", presaleFactory, presaleFactory.deploy,
     BigNumber.from(args.HARD_CAP),
+    BigNumber.from(args.HURDLE),
     inviteMerkleTree.getRoot(),
     BigNumber.from(args.VESTING_CLIFF_DURATION),
     BigNumber.from(args.VESTING_DURATION),
