@@ -24,7 +24,7 @@ contract RoundFactory is Ownable {
     /// @dev mapping from venture => rounds
     mapping(address => Presale[]) public ventureRounds;
 
-    event RoundCreated(address venture, Presale round);
+    event RoundCreated(address indexed venture, Presale round, PresaleConfig config);
 
     constructor() {}
 
@@ -43,7 +43,7 @@ contract RoundFactory is Ownable {
 
         ventureRounds[msg.sender].push(Round);
 
-        emit RoundCreated(msg.sender, Round);
+        emit RoundCreated(msg.sender, Round, config);
     }
 
     /// @notice Retrieves the list of rounds for the Venture: `venture`
