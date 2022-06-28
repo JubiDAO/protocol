@@ -57,7 +57,7 @@ export async function deployAndMine<T extends BaseContract, D extends (...args: 
 
 const expectedEnvvars: {[key: string]: string[]} = {
   mainnet: ['MAINNET_ADDRESS_PRIVATE_KEY', 'MAINNET_RPC_URL', 'MAINNET_GAS_IN_GWEI'],
-  rinkeby: ['RINKEBY_ADDRESS_PRIVATE_KEY', 'RINKEBY_RPC_URL'],
+  testnet: ['TESTNET_ADDRESS_PRIVATE_KEY', 'TESTNET_RPC_URL'],
   localhost: [],
 }
 

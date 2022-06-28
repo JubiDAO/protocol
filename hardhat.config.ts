@@ -44,10 +44,10 @@ module.exports = {
     // hardhat: {
     //   allowUnlimitedContractSize: true,
     // },
-    rinkeby: {
-      url: process.env.RINKEBY_RPC_URL || '',
-      accounts: process.env.RINKEBY_ADDRESS_PRIVATE_KEY
-        ? [process.env.RINKEBY_ADDRESS_PRIVATE_KEY]
+    testnet: {
+      url: process.env.TESTNET_RPC_URL || '',
+      accounts: process.env.TESTNET_ADDRESS_PRIVATE_KEY
+        ? [process.env.TESTNET_ADDRESS_PRIVATE_KEY]
         : [],
       gasPrice: 2000000000,
     },
