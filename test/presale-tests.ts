@@ -34,9 +34,9 @@ describe('Dogfood Presale Tests', function () {
   let INVESTOR4: Signer;
   let INVESTOR5: Signer;
   let nonInvestor: Signer;
-  let daoMultisig: Signer;
-  let usdcToken: FakeERC20;
-  let issuedToken: FakeERC20;
+  let venture: Signer;
+  let purchaseToken: FakeERC20;
+  let ventureToken: FakeERC20;
   let inviteCodes: string[];
   let inviteMerkleTree: MerkleTree
   let inviteCodesData: Map<string, InviteCodeRange>;
@@ -78,10 +78,10 @@ describe('Dogfood Presale Tests', function () {
   }
 
   beforeEach(async function () {
-    [owner, ash, jeeva, INVESTOR3, INVESTOR4, INVESTOR5, nonInvestor, daoMultisig] = await ethers.getSigners();
+    [owner, ash, jeeva, INVESTOR3, INVESTOR4, INVESTOR5, nonInvestor, venture] = await ethers.getSigners();
 
-    usdcToken = await new FakeERC20__factory(owner).deploy("Fake USDC", "USDC");
-    issuedToken = await new FakeERC20__factory(owner).deploy("Fake Issued Token", "TOKEN");
+    purchaseToken = await new FakeERC20__factory(owner).deploy("Fake USDC", "USDC");
+    ventureToken = await new FakeERC20__factory(owner).deploy("Fake Venture Token", "TOKEN");
 
     inviteCodesData = await generateInviteCodes([
       { qty: 10, minInvestment: 100, maxInvestment: 1000 },
@@ -96,12 +96,12 @@ describe('Dogfood Presale Tests', function () {
       inviteMerkleTree.getRoot(),
       SECONDS_IN_ONE_WEEK,
       SECONDS_IN_ONE_MONTH,
-      usdcToken.address,
-      await daoMultisig.getAddress()
+      purchaseToken.address,
+      await venture.getAddress()
     );
 
-    await usdcToken.mint(await owner.getAddress(), toAtto(10000000000));
-    await usdcToken.approve(presale.address, toAtto(10000000000));
+    await purchaseToken.mint(await owner.getAddress(), toAtto(10000000000));
+    await purchaseToken.approve(presale.address, toAtto(10000000000));
 
   });
 
@@ -120,14 +120,14 @@ describe('Dogfood Presale Tests', function () {
       expect(await presale.owner()).to.equal(await jeeva.getAddress());
     });
 
-    it('should allow the setting the token issued', async function () {
-      expect(await presale.issuedToken()).to.equal(ethers.constants.AddressZero);
-      await presale.setIssuedToken(issuedToken.address);
-      expect(await presale.issuedToken()).to.equal(issuedToken.address);
+    it('should allow the setting the venture token', async function () {
+      expect(await presale.ventureToken()).to.equal(ethers.constants.AddressZero);
+      await presale.setVentureToken(ventureToken.address);
+      expect(await presale.ventureToken()).to.equal(ventureToken.address);
     });
 
-    it('only the owner can set the issued token', async function () {
-      await expect(presale.connect(jeeva).setIssuedToken(issuedToken.address))
+    it('only the owner can set the venture token', async function () {
+      await expect(presale.connect(jeeva).setVentureToken(ventureToken.address))
         .to.revertedWith(ONLY_OWNER_ERROR);
     });
 
@@ -165,7 +165,7 @@ describe('Dogfood Presale Tests', function () {
       skipNInvites(10);
       await presale.depositFor(await jeeva.getAddress(), toAtto(9900), ...nextInvite());
       await expect(async () => presale.depositFor(await ash.getAddress(), toAtto(1000), ...nextInvite()))
-        .to.changeTokenBalance(usdcToken, presale, toAtto(100))
+        .to.changeTokenBalance(purchaseToken, presale, toAtto(100))
       expect(await presale.totalAllocated()).eql(HARD_CAP);
     });
 
@@ -178,7 +178,7 @@ describe('Dogfood Presale Tests', function () {
     });
 
     it('No tokens claimable during vesting cliff', async function () {
-      await presale.setIssuedToken(issuedToken.address)
+      await presale.setVentureToken(ventureToken.address)
       await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
       await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
 
@@ -190,10 +190,10 @@ describe('Dogfood Presale Tests', function () {
       expect(await presale.calculateClaimableNow(await ash.getAddress())).eql([0,0].map(BigNumber.from));
     });
 
-    it('Can only set issued token once', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      await expect(presale.setIssuedToken(issuedToken.address))
-        .to.revertedWith("Presale: Issued token already sent");
+    it('Can only set venture token once', async function () {
+      await presale.setVentureToken(ventureToken.address)
+      await expect(presale.setVentureToken(ventureToken.address))
+        .to.revertedWith("Presale: Venture token already sent");
 
       expect(await presale.calculateClaimableNow(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
       expect(await presale.calculateClaimableNow(await ash.getAddress())).eql([0,0].map(BigNumber.from));
@@ -204,8 +204,8 @@ describe('Dogfood Presale Tests', function () {
     });
 
     it('Single Account claims fair share by end of vesting, if they make multiple claims', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      await issuedToken.mint(presale.address, HARD_CAP)
+      await presale.setVentureToken(ventureToken.address)
+      await ventureToken.mint(presale.address, HARD_CAP)
 
       // skip the invites with maxInvestment of 1000
       skipNInvites(10);
@@ -224,12 +224,12 @@ describe('Dogfood Presale Tests', function () {
           await advance(SECONDS_IN_ONE_WEEK);
           await presale.claimFor(await jeeva.getAddress());
         }
-      }).to.changeTokenBalance(issuedToken, jeeva, toAtto(10000 / 5))
+      }).to.changeTokenBalance(ventureToken, jeeva, toAtto(10000 / 5))
     });
 
     it('Interleaved claims all result in the expected token amount', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      await issuedToken.mint(presale.address, toAtto(10000))
+      await presale.setVentureToken(ventureToken.address)
+      await ventureToken.mint(presale.address, toAtto(10000))
 
       await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
       await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
@@ -262,12 +262,12 @@ describe('Dogfood Presale Tests', function () {
         }
       }
 
-      expect(await issuedToken.balanceOf(presale.address)).eq(0);
+      expect(await ventureToken.balanceOf(presale.address)).eq(0);
     });
 
     it('Should allow entire allocation to be claimed on round completion', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      issuedToken.mint(presale.address, toAtto(10000))
+      await presale.setVentureToken(ventureToken.address)
+      ventureToken.mint(presale.address, toAtto(10000))
 
       await presale.depositFor(await jeeva.getAddress(), toAtto(100), ...nextInvite());
       await presale.depositFor(await ash.getAddress(), toAtto(300), ...nextInvite());
@@ -290,17 +290,17 @@ describe('Dogfood Presale Tests', function () {
           .to.emit(presale, "Claimed")
           .withArgs(await signer.getAddress(), amount);
 
-        expect(await issuedToken.balanceOf(await signer.getAddress())).eq(
+        expect(await ventureToken.balanceOf(await signer.getAddress())).eq(
           amount
         );
       }
 
-      expect(await issuedToken.balanceOf(presale.address)).eq(0);
+      expect(await ventureToken.balanceOf(presale.address)).eq(0);
     });
 
     it("Invite code can only be used by a single wallet", async function () {
-      await presale.setIssuedToken(issuedToken.address);
-      await issuedToken.mint(presale.address, toAtto(10000));
+      await presale.setVentureToken(ventureToken.address);
+      await ventureToken.mint(presale.address, toAtto(10000));
 
       const [min, max, hashedCode, merkleProof] =
         nextInvite();
@@ -369,8 +369,8 @@ describe('Dogfood Presale Tests', function () {
     });
 
     it('Invalid invite codes are not accepted', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      issuedToken.mint(presale.address, toAtto(10000))
+      await presale.setVentureToken(ventureToken.address)
+      ventureToken.mint(presale.address, toAtto(10000))
 
       const [hashedCode, merkleProof] = hashedInvite("invalid123", 10, 100);
       await expect(presale.depositFor(await ash.getAddress(), toAtto(300), toAtto(10), toAtto(100), hashedCode, merkleProof))
@@ -378,8 +378,8 @@ describe('Dogfood Presale Tests', function () {
     });
 
     it('Mismatched invite hash and merkle proof should fail', async function () {
-      await presale.setIssuedToken(issuedToken.address)
-      issuedToken.mint(presale.address, toAtto(10000))
+      await presale.setVentureToken(ventureToken.address)
+      ventureToken.mint(presale.address, toAtto(10000))
 
       const [min,max,hashedCode, _1] = nextInvite()
       const [_min,_max,_2, merkleProof] = nextInvite()
@@ -442,7 +442,7 @@ describe('Dogfood Presale Tests', function () {
     });
 
     it("Token are swap after round is closed and hurdle is not met", async () => {
-      await presale.setIssuedToken(issuedToken.address);
+      await presale.setVentureToken(ventureToken.address);
       await presale.depositFor(
         await jeeva.getAddress(),
         toAtto(100),
@@ -450,11 +450,11 @@ describe('Dogfood Presale Tests', function () {
       );
 
       await presale.closeRound();
-      expect(await presale.issuedToken()).eq(usdcToken.address);
+      expect(await presale.ventureToken()).eq(purchaseToken.address);
     });
 
     it("Investor can get refunds after round close and hurdle is not met", async () => {
-      await presale.setIssuedToken(issuedToken.address);
+      await presale.setVentureToken(ventureToken.address);
       await presale.depositFor(
         await jeeva.getAddress(),
         toAtto(100),
@@ -473,7 +473,7 @@ describe('Dogfood Presale Tests', function () {
       );
 
       await presale.closeRound();
-      expect(await presale.issuedToken()).eq(usdcToken.address);
+      expect(await presale.ventureToken()).eq(purchaseToken.address);
 
       await expect(presale.claimFor(await jeeva.getAddress()))
         .to.emit(presale, "Claimed")
@@ -487,7 +487,7 @@ describe('Dogfood Presale Tests', function () {
     });
 
     it("Investor can get refunds when investing multiple times after round close and hurdle is not met", async () => {
-      await presale.setIssuedToken(issuedToken.address);
+      await presale.setVentureToken(ventureToken.address);
       await presale.depositFor(
         await jeeva.getAddress(),
         toAtto(100),
@@ -521,7 +521,7 @@ describe('Dogfood Presale Tests', function () {
       );
 
       await presale.closeRound();
-      expect(await presale.issuedToken()).eq(usdcToken.address);
+      expect(await presale.ventureToken()).eq(purchaseToken.address);
 
       await expect(presale.claimFor(await jeeva.getAddress()))
         .to.emit(presale, "Claimed")

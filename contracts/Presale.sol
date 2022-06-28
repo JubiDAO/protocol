@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title Token management for a funding round
- * @notice Funds `daoMultisig` with `raiseToken` once round is closed and `hurdle` is met.
- * Funders will get `issuedToken` on a round close, once vesting conditions are met.
+ * @notice Funds `ventureWallet` with `purchaseToken` once round is closed and `hurdle` is met.
+ * Funders will get `ventureToken` on a round close, once vesting conditions are met.
  * If the `hurdle` isn't cleared, funders can claim back their initial investment.
  */
 contract Presale is Ownable {
@@ -23,17 +23,17 @@ contract Presale is Ownable {
     uint256 public immutable hurdle;
 
     /// @dev vesting cliff duration, kicks in after the token
-    /// is created and set (ie, after setIssuedToken is called)
+    /// is created and set (ie, after setVentureToken is called)
     uint256 public immutable vestingCliffDuration;
 
     /// @dev when the vesting starts
     uint256 public immutable vestingDuration;
 
     /// @dev what token are we accepting as part of the raise
-    IERC20 public immutable raiseToken;
+    IERC20 public immutable purchaseToken;
 
     /// @dev Where do funds raised get sent
-    address public immutable daoMultisig;
+    address public immutable ventureWallet;
 
     /// @dev merkle root that captures all valid invite codes
     bytes32 public immutable inviteCodesMerkleRoot;
@@ -43,10 +43,10 @@ contract Presale is Ownable {
 
     /// @dev what token are we issuing as per vesting conditions
     /// not immutable as we expect to set this once we complete the presale
-    IERC20 public issuedToken;
+    IERC20 public ventureToken;
 
     /// @dev when the vesting starts
-    uint256 public issuedTokenAtTimestamp;
+    uint256 public ventureTokenAtTimestamp;
 
     mapping(address => uint256) public allocation;
     uint256 public totalAllocated;
@@ -63,20 +63,20 @@ contract Presale is Ownable {
         bytes32 _inviteCodesMerkleRoot,
         uint256 _vestingCliffDuration,
         uint256 _vestingDuration,
-        IERC20 _raiseToken,
-        address _daoMultisig
+        IERC20 _purchaseToken,
+        address _ventureWallet
     ) {
         hardCap = _hardCap;
         hurdle = _hurdle;
         inviteCodesMerkleRoot = _inviteCodesMerkleRoot;
         vestingCliffDuration = _vestingCliffDuration;
         vestingDuration = _vestingDuration;
-        raiseToken = _raiseToken;
-        daoMultisig = _daoMultisig;
+        purchaseToken = _purchaseToken;
+        ventureWallet = _ventureWallet;
     }
 
     /**
-     * @notice Deposit `amount` of token `raiseToken` for this Round. Requires valid `amount` as per `inviteCode`
+     * @notice Deposit `amount` of token `purchaseToken` for this Round. Requires valid `amount` as per `inviteCode`
      */
     function depositFor(address account, uint256 amount, uint256 minInvestment, uint256 maxInvestment, bytes memory inviteCode, bytes32[] calldata merkleProof) external {
         require(account != address(0), "Presale: Address cannot be 0x0");
@@ -104,7 +104,7 @@ contract Presale is Ownable {
         totalAllocated += amount;
         claimedInvites[inviteCode] = account;
 
-        SafeERC20.safeTransferFrom(raiseToken, msg.sender, address(this), amount);
+        SafeERC20.safeTransferFrom(purchaseToken, msg.sender, address(this), amount);
         emit Deposited(account, amount);
     }
 
@@ -113,7 +113,7 @@ contract Presale is Ownable {
     /// @param timestamp => can be used to calculate claimable amount in a time other than block.timestamp
     function calculateClaimable(address account, uint256 timestamp) public view returns (uint256 share, uint256 amount)
     {
-        if (address(issuedToken) == address(0)) {
+        if (address(ventureToken) == address(0)) {
             return (0,0);
         }
 
@@ -121,7 +121,7 @@ contract Presale is Ownable {
             return (0,0);
         }
 
-        uint256 vestingStartTimestamp = issuedTokenAtTimestamp + vestingCliffDuration;
+        uint256 vestingStartTimestamp = ventureTokenAtTimestamp + vestingCliffDuration;
         if (timestamp < vestingStartTimestamp) {
             return (0,0);
         }
@@ -132,7 +132,7 @@ contract Presale is Ownable {
         }
 
         share = ((allocation[account] * currentVestingDuration) / vestingDuration) - claimed[account];
-        amount = share * issuedToken.balanceOf(address(this)) / (totalAllocated - totalClaimed);
+        amount = share * ventureToken.balanceOf(address(this)) / (totalAllocated - totalClaimed);
     }
 
     function calculateClaimableNow(address account) public view returns (uint256, uint256) {
@@ -140,8 +140,8 @@ contract Presale is Ownable {
     }
 
     /**
-     *  @notice Claim available allocation of 'issuedToken' if round is closed ( 'isOpen'=false ) and  `hurdle` amount was met
-     *  If the round is closed and `hurdle` was not met, claimFor will return invested amount of `raiseToken` to `account`
+     *  @notice Claim available allocation of 'ventureToken' if round is closed ( 'isOpen'=false ) and  `hurdle` amount was met
+     *  If the round is closed and `hurdle` was not met, claimFor will return invested amount of `purchaseToken` to `account`
      */
     function claimFor(address account) external {
         require(!isOpen, "Presale: Can only claim once round is closed");
@@ -150,31 +150,31 @@ contract Presale is Ownable {
         claimed[account] += share;
         totalClaimed += share;
 
-        SafeERC20.safeTransfer(issuedToken, account, claimable);
+        SafeERC20.safeTransfer(ventureToken, account, claimable);
         emit Claimed(account, claimable);
     }
 
-    /// @dev owner only. set issued token. Can only be called once
+    /// @dev owner only. set venture token. Can only be called once
     /// and kicks of vesting
-    function setIssuedToken(IERC20 _issuedToken) external onlyOwner {
-        require(address(issuedToken) == address(0), "Presale: Issued token already sent");
-        issuedToken = _issuedToken;
-        issuedTokenAtTimestamp = block.timestamp;
+    function setVentureToken(IERC20 _ventureToken) external onlyOwner {
+        require(address(ventureToken) == address(0), "Presale: Venture token already sent");
+        ventureToken = _ventureToken;
+        ventureTokenAtTimestamp = block.timestamp;
     }
 
     /// @dev owner only. Close round
     function closeRound() external onlyOwner {
         isOpen = false;
 
-        // when round is closed if Hurdle is met transfer funds to daoMultisig
+        // when round is closed if Hurdle is met transfer funds to ventureWallet
         if (hurdle <= totalAllocated) {
-            SafeERC20.safeTransfer(raiseToken, daoMultisig, totalAllocated);
+            SafeERC20.safeTransfer(purchaseToken, ventureWallet, totalAllocated);
         } else {
-            // when the round is closed if Hurdle is NOT met set the issuedToken to raiseToken and remove any vesting so
+            // when the round is closed if Hurdle is NOT met set the ventureToken to purchaseToken and remove any vesting so
             // funders can call claimFor to refund their initial investment
-            issuedToken = raiseToken;
+            ventureToken = purchaseToken;
             // This will make so allocation is claimable right away
-            issuedTokenAtTimestamp = vestingCliffDuration;
+            ventureTokenAtTimestamp = vestingCliffDuration;
         }
     }
 }
