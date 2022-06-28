@@ -46,7 +46,7 @@ contract Presale is Ownable {
     IERC20 public ventureToken;
 
     /// @dev when the vesting starts
-    uint256 public ventureTokenAtTimestamp;
+    uint256 public vestingCliffStartTimestamp;
 
     mapping(address => uint256) public allocation;
     uint256 public totalAllocated;
@@ -121,7 +121,7 @@ contract Presale is Ownable {
             return (0,0);
         }
 
-        uint256 vestingStartTimestamp = ventureTokenAtTimestamp + vestingCliffDuration;
+        uint256 vestingStartTimestamp = vestingCliffStartTimestamp + vestingCliffDuration;
         if (timestamp < vestingStartTimestamp) {
             return (0,0);
         }
@@ -159,7 +159,7 @@ contract Presale is Ownable {
     function setVentureToken(IERC20 _ventureToken) external onlyOwner {
         require(address(ventureToken) == address(0), "Presale: Venture token already sent");
         ventureToken = _ventureToken;
-        ventureTokenAtTimestamp = block.timestamp;
+        vestingCliffStartTimestamp = block.timestamp;
     }
 
     /// @dev owner only. Close round
@@ -174,7 +174,7 @@ contract Presale is Ownable {
             // funders can call claimFor to refund their initial investment
             ventureToken = purchaseToken;
             // This will make so allocation is claimable right away
-            ventureTokenAtTimestamp = vestingCliffDuration;
+            vestingCliffStartTimestamp = vestingCliffDuration;
         }
     }
 }
