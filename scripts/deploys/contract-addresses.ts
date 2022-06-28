@@ -14,7 +14,7 @@ export const DEPLOYED_CONTRACTS: {[key: string]: DeployedContracts} = {
     USDC: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
     DAO_MULTISIG: '0x7a77daeA5cA35a83BF529B9d72740fB965cCC5E6',
   },
-  rinkeby: {
+  testnet: {
     PRESALE: '',
     ROUND_FACTORY: '',
     USDC: '0xD92E713d051C37EbB2561803a3b5FBAbc4962431',
