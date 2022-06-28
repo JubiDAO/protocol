@@ -174,7 +174,7 @@ contract Presale is Ownable {
             // funders can call claimFor to refund their initial investment
             ventureToken = purchaseToken;
             // This will make so allocation is claimable right away
-            vestingCliffStartTimestamp = vestingCliffDuration;
+            vestingCliffStartTimestamp = block.timestamp - vestingDuration - vestingCliffDuration;
         }
     }
 }
