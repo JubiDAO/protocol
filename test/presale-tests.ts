@@ -25,7 +25,7 @@ const MINIMUM_INVESTMENT_LIMIT_ERROR =
 const HARD_CAP = toAtto(10000);
 const HURDLE = toAtto(10000).div(2);
 
-describe('Dogfood Presale Tests', function () {
+describe('Presale Tests', function () {
   let presale: Presale;
   let owner: Signer;
   let ash: Signer;
@@ -102,7 +102,7 @@ describe('Dogfood Presale Tests', function () {
 
     await purchaseToken.mint(await owner.getAddress(), toAtto(10000000000));
     await purchaseToken.approve(presale.address, toAtto(10000000000));
-
+    await ventureToken.mint(await owner.getAddress(), toAtto(10000000000));
   });
 
   describe('Deployment/Management', function () {
@@ -175,6 +175,90 @@ describe('Dogfood Presale Tests', function () {
 
       expect(await presale.calculateClaimableNow(await jeeva.getAddress())).eql([0,0].map(BigNumber.from));
       expect(await presale.calculateClaimableNow(await ash.getAddress())).eql([0,0].map(BigNumber.from));
+    });
+
+    it('Can claim tokens instantly, when presale vestingDuration is 0 and vestingCliffDuration is 0', async function() {
+      const investmentAmount = toAtto(1000);
+      presale = await new Presale__factory(owner).deploy(
+        HARD_CAP,
+        investmentAmount,
+        inviteMerkleTree.getRoot(),
+        0,
+        0,
+        purchaseToken.address,
+        await venture.getAddress()
+      );
+      await purchaseToken.approve(presale.address, toAtto(10000000000));
+
+      await presale.depositFor(await jeeva.getAddress(), investmentAmount, ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), investmentAmount, ...nextInvite());
+
+      await presale.setVentureToken(ventureToken.address);
+      await ventureToken.transfer(presale.address, investmentAmount.mul(2));
+      await presale.closeRound();
+
+      await expect(async () => {
+        await presale.claimFor(await jeeva.getAddress());
+        await presale.claimFor(await ash.getAddress());
+      }).to.changeTokenBalances(ventureToken, [jeeva, ash], [investmentAmount, investmentAmount]);
+    });
+
+    it('Can claim tokens, when presale vestingCliffDuration is 0', async function() {
+      const investmentAmount = toAtto(1000);
+      presale = await new Presale__factory(owner).deploy(
+        HARD_CAP,
+        investmentAmount,
+        inviteMerkleTree.getRoot(),
+        0,
+        SECONDS_IN_ONE_WEEK,
+        purchaseToken.address,
+        await venture.getAddress()
+      );
+      await purchaseToken.approve(presale.address, toAtto(10000000000));
+
+      await presale.depositFor(await jeeva.getAddress(), investmentAmount, ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), investmentAmount, ...nextInvite());
+
+      await presale.setVentureToken(ventureToken.address);
+      await ventureToken.transfer(presale.address, investmentAmount.mul(2));
+      await presale.closeRound();
+
+      // advance vesting duration
+      await advance(SECONDS_IN_ONE_WEEK);
+
+      await expect(async () => {
+        await presale.claimFor(await jeeva.getAddress());
+        await presale.claimFor(await ash.getAddress());
+      }).to.changeTokenBalances(ventureToken, [jeeva, ash], [investmentAmount, investmentAmount]);
+    });
+
+    it('Can claim tokens, when presale vestingDuration is 0', async function() {
+      const investmentAmount = toAtto(1000);
+      presale = await new Presale__factory(owner).deploy(
+        HARD_CAP,
+        investmentAmount,
+        inviteMerkleTree.getRoot(),
+        SECONDS_IN_ONE_WEEK,
+        0,
+        purchaseToken.address,
+        await venture.getAddress()
+      );
+      await purchaseToken.approve(presale.address, toAtto(10000000000));
+
+      await presale.depositFor(await jeeva.getAddress(), investmentAmount, ...nextInvite());
+      await presale.depositFor(await ash.getAddress(), investmentAmount, ...nextInvite());
+
+      await presale.setVentureToken(ventureToken.address);
+      await ventureToken.transfer(presale.address, investmentAmount.mul(2));
+      await presale.closeRound();
+
+      // advance vesting cliff duration
+      await advance(SECONDS_IN_ONE_WEEK);
+
+      await expect(async () => {
+        await presale.claimFor(await jeeva.getAddress());
+        await presale.claimFor(await ash.getAddress());
+      }).to.changeTokenBalances(ventureToken, [jeeva, ash], [investmentAmount, investmentAmount]);
     });
 
     it('No tokens claimable during vesting cliff', async function () {

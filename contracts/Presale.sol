@@ -127,11 +127,18 @@ contract Presale is Ownable {
         }
 
         uint256 currentVestingDuration = timestamp - vestingStartTimestamp;
-        if (currentVestingDuration > vestingDuration) {
-            currentVestingDuration = vestingDuration;
+        // minimum vestingDuration to 1 sec
+        uint256 _vestingDuration = 1;
+
+        if (vestingDuration > 0) {
+            _vestingDuration = vestingDuration;
         }
 
-        share = ((allocation[account] * currentVestingDuration) / vestingDuration) - claimed[account];
+        if (currentVestingDuration > _vestingDuration) {
+            currentVestingDuration = _vestingDuration;
+        }
+
+        share = ((allocation[account] * currentVestingDuration) / _vestingDuration) - claimed[account];
         amount = share * ventureToken.balanceOf(address(this)) / (totalAllocated - totalClaimed);
     }
 
